@@ -1,7 +1,7 @@
 import streamlit as st
 
 # 輔助函數：格式化顯示
-def format_g_to_any(g_val):
+def format_weight(g_value)
     if g_val < 1.0:
         return f"{g_val * 1000:.2f} mg"
     return f"{g_val:.4f} g"
