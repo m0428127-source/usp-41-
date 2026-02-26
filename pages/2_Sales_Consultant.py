@@ -115,7 +115,7 @@ c1.metric(
 c2.metric(
     label="實際最小秤重 (基於現場標準差)", 
     value=auto_unit_format(usp_min_weight_g),
-    delta=f"環境影響: {(usp_min_weight_g / (2000 * s_threshold_g)):.1f}x",
+    delta=f"環境影響: {(usp_min_weight_g / (2000 * 0.41*s_threshold_g)):.1f}x",
     delta_color="inverse",
     help="這是根據您現場實測的標準差算出的最小秤重門檻。若數值遠大於理論極限，代表環境干擾嚴重。"
 )
