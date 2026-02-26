@@ -9,7 +9,7 @@ def format_weight(g_value):
 # 設定網頁標題與風格
 st.set_page_config(page_title="USP <41> & <1251> 專業合規工作站", layout="wide")
 st.title("⚖️ USP 〈41〉 & 〈1251〉 天平測試合規工作站")
-st.caption("工程師進階版 | 依據標準：USP-NF 〈41〉 & 〈1251〉 (Official Feb 1, 2026)")
+st.caption("依據標準：USP-NF 〈41〉 & 〈1251〉 (Official Feb 1, 2026)")
 
 # --- 側邊欄：檢查前作為 (Pre-check) ---
 with st.sidebar:
@@ -22,14 +22,14 @@ with st.sidebar:
     balance_status = st.checkbox("天平已預熱並完成水平調整")
     
     if not (env_surface and env_location and env_static and balance_status):
-        st.warning("⚠️ 環境檢核未完成，測試結果可能不具法律效力。")
+        st.warning("⚠️ 依循 USP<1251> 環境檢核未完成，量測不穩定風險提高。")
     else:
-        st.success("✅ 環境檢查完成，準備執行測試。")
+        st.success("✅ 依循 USP<1251> 環境檢查完成，準備執行測試。")
 
     st.divider()
     st.header("📋 2. 天平基本規格 (g)")
-    balance_type = st.selectbox("天平類型", ["單一量程", "多區間 (Multi-interval)", "多量程 (Multiple range)"])
-    max_cap_g = st.number_input("全機最大容量 Max Capacity (g)", value=220.0, format="%.4f")
+    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU多量程 (Multiple range)"])
+    max_cap_g = st.number_input("天平最大秤重量 Max Capacity (g)", value=220.0, format="%.4f")
     is_manufacturing = st.checkbox("用於製造用途 (Manufacturing)?")
 
 # --- 主頁面邏輯 ---
