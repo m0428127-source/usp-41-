@@ -1,15 +1,16 @@
 import streamlit as st
 
-# --- 1. 工具函數 ---
+# --- 1. 工具函數 (核心優化) ---
 def smart_format(value):
     """ 
-    確保數字呈現（非科學記號），並動態修剪末尾無意義的 0。
-    輸入 220 顯示 220, 0.99 顯示 0.99, 0.00001 顯示 0.00001
+    最完美的數據呈現：
+    1. 絕不使用科學記號 (如 8e-05)
+    2. 自動去掉末端多餘的 0 (如 220.0000)
+    3. 輸入 220 顯示 220，輸入 0.00008 顯示 0.00008
     """
     if value is None or value == 0: return "0"
-    # 使用 .10g 可以兼顧去零與防止科學記號（到 10 位數都還是數字）
-    formatted = f"{value:.10g}"
-    return formatted
+    # 使用 .10f 強制展開小數避免科學記號，再移除右側多餘的 0 與小數點
+    return f"{value:.10f}".rstrip('0').rstrip('.')
 
 def auto_unit_format(g_value):
     """ 指標卡與報告使用的格式 """
@@ -50,10 +51,6 @@ with st.sidebar:
     st.checkbox("環境受控，且遠離直接氣流")
 
 st.markdown("### 1️⃣ 設定規格與需求")
-# 關鍵：這裡改用 %.10g
-# 它會確保 0.99 顯示 0.99 (自動去零)，且 0.00001 不會變科學記號
-p_step = 0.0000001
-p_format = "%.10g" 
 
 col1, col2 = st.columns(2)
 with col1:
@@ -84,38 +81,43 @@ if active_d_g != st.session_state.last_d:
     st.session_state.last_d = active_d_g
 
 st.markdown("---")
-# --- 數據輸入區 ---
+# --- 數據輸入區 (關鍵修正：改用 text_input 兼顧去零與非科學記號) ---
 col_snw, col_std = st.columns(2)
 
 with col_snw:
     is_snw_unknown = st.checkbox("尚未決定最小淨重量")
     if not is_snw_unknown:
-        snw_raw = st.number_input(f"客戶設定最小淨重量 ({display_unit})", 
-                                  min_value=0.0000001, 
-                                  value=float(st.session_state.snw_val),
-                                  step=p_step,
-                                  format=p_format, 
-                                  key="snw_input_field")
-        st.session_state.snw_val = snw_raw
+        # 改用 text_input 並預設呈現 smart_format 後的字串
+        snw_input = st.text_input(f"客戶設定最小淨重量 ({display_unit})", 
+                                  value=smart_format(st.session_state.snw_val),
+                                  key="snw_text_field")
+        try:
+            snw_raw = float(snw_input)
+            st.session_state.snw_val = snw_raw
+        except ValueError:
+            st.error("請輸入有效數字")
+            snw_raw = st.session_state.snw_val
         snw_g = convert_to_g(snw_raw, display_unit)
     else:
         snw_g = None
 
 with col_std:
     if has_std == "手動輸入實測 Std":
-        std_raw = st.number_input(f"重複性實測標準差 Std ({display_unit})", 
-                                  min_value=0.0000001,
-                                  value=float(st.session_state.std_val),
-                                  step=p_step,
-                                  format=p_format,
-                                  key="std_input_field")
-        st.session_state.std_val = std_raw
+        std_input = st.text_input(f"重複性實測標準差 Std ({display_unit})", 
+                                  value=smart_format(st.session_state.std_val),
+                                  key="std_text_field")
+        try:
+            std_raw = float(std_input)
+            st.session_state.std_val = std_raw
+        except ValueError:
+            st.error("請輸入有效數字")
+            std_raw = st.session_state.std_val
         std_g = convert_to_g(std_raw, display_unit)
     else:
         st.info("ℹ️ 模式：機台理論極限預估")
         std_g = 0
 
-# --- 5. 核心計算 ---
+# --- 5. 核心計算 (邏輯文字完全不變) ---
 s_limit = 0.41 * d1_g
 effective_s = max(std_g, s_limit)
 is_corrected = std_g < s_limit
@@ -137,7 +139,7 @@ else:
     else:
         st.error(f"❌ **安全狀態：不合規**")
 
-# 指標卡
+# 指標卡 (自動去零且非科學化顯示)
 c1, c2, c3 = st.columns(3)
 with c1:
     st.metric("機台理想最小秤重量", auto_unit_format(ideal_min_w))
@@ -151,7 +153,7 @@ with c3:
     else:
         st.metric("客戶設定最小淨重量", "待定")
 
-# --- 7. 報告摘要 ---
+# --- 7. 報告摘要 (邏輯文字完全不變) ---
 st.divider()
 st.markdown("### 📄 專業評估報告摘要")
 
