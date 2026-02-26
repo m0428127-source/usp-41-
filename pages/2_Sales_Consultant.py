@@ -4,7 +4,6 @@ import streamlit as st
 def format_dynamic(value):
     """ 強制動態修剪位數，去掉末尾無意義的 0 """
     if value is None or value == 0: return "0"
-    # 使用 .7f 展開後去掉末尾 0
     formatted = f"{value:.7f}".rstrip('0').rstrip('.')
     return formatted if formatted != "" else "0"
 
@@ -28,11 +27,15 @@ st.set_page_config(page_title="USP <41> 專業合規評估", layout="centered")
 st.title("⚖️ USP 天平合規快速評估")
 st.caption("工程師實測 / 業務快速提案 專業工具版 (2026 Edition)")
 
-# --- 3. 初始化 Session State ---
-if 'last_active_d' not in st.session_state:
-    st.session_state.last_active_d = None
+# --- 3. 初始化 Session State (這是防止數值被覆蓋的關鍵) ---
+if 'snw_val' not in st.session_state:
+    st.session_state.snw_val = 0.02
+if 'std_val' not in st.session_state:
+    st.session_state.std_val = 0.00008  # 初始預設值
+if 'last_d' not in st.session_state:
+    st.session_state.last_d = 0.0001
 
-# ---  side_bar ---
+# --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("⚙️ 顯示設定")
     display_unit = st.selectbox("顯示單位", ["g", "mg", "kg"], index=0)
@@ -67,6 +70,14 @@ else:
     active_d_g = convert_to_g(d_val, display_unit)
     d1_g = active_d_g
 
+# --- 邏輯修正點：檢查是否要聯動 ---
+# 只有當用戶是第一次進來，或是他完全沒改過 Std 時，我們才跟隨 d 變動。
+# 這裡我們設定：如果 d 變了，我們僅提供建議，但不強制覆蓋已輸入的 session_state (除非原本是空的)
+if active_d_g != st.session_state.last_d:
+    # 這裡可以決定是否要隨 d 聯動。如果您希望「完全不被改動」，就把下面這行註解掉
+    # st.session_state.std_val = float(convert_from_g(active_d_g * 0.8, display_unit)) 
+    st.session_state.last_d = active_d_g
+
 st.markdown("---")
 # --- 數據輸入區與防呆 ---
 col_snw, col_std = st.columns(2)
@@ -74,26 +85,27 @@ col_snw, col_std = st.columns(2)
 with col_snw:
     is_snw_unknown = st.checkbox("尚未決定最小淨重量")
     if not is_snw_unknown:
-        # 移除固定格式 "%.7f"，改由 Streamlit 自動根據 value 位數顯示
-        # 並使用 min_value 防呆（不得為 0 或負數）
+        # 使用 Session State 作為 value，並透過 key 自動鎖定用戶輸入
         snw_raw = st.number_input(f"客戶設定最小淨重量 ({display_unit})", 
                                   min_value=0.0000001, 
-                                  value=convert_from_g(0.02, display_unit),
+                                  value=st.session_state.snw_val,
                                   step=0.0000001,
-                                  help="請輸入大於 0 的數值")
+                                  format=None, # 移除強制格式化以去零
+                                  key="snw_input_field")
+        st.session_state.snw_val = snw_raw # 更新存儲值
         snw_g = convert_to_g(snw_raw, display_unit)
     else:
         snw_g = None
 
 with col_std:
     if has_std == "手動輸入實測 Std":
-        # 預設 Std 初始值隨 d 變動，同樣移除固定補零格式
-        default_std = convert_from_g(active_d_g * 0.8, display_unit)
         std_raw = st.number_input(f"重複性實測標準差 Std ({display_unit})", 
                                   min_value=0.0000001,
-                                  value=default_std,
+                                  value=st.session_state.std_val,
                                   step=0.0000001,
-                                  help="請輸入大於 0 的 Std 實測值")
+                                  format=None, # 移除強制格式化以去零
+                                  key="std_input_field")
+        st.session_state.std_val = std_raw # 更新存儲值
         std_g = convert_to_g(std_raw, display_unit)
     else:
         st.info("ℹ️ 模式：機台理論極限預估")
@@ -103,7 +115,6 @@ with col_std:
 s_limit = 0.41 * d1_g
 effective_s = max(std_g, s_limit)
 is_corrected = std_g < s_limit
-
 usp_min_w = 2000 * effective_s
 ideal_min_w = 2000 * s_limit
 
@@ -124,49 +135,43 @@ else:
     else:
         st.error(f"❌ **安全狀態：不合規** | 客戶目標重量小於法規判定之最小秤量！")
 
-# 指標卡
+# 指標卡 (使用動態去零格式)
 c1, c2, c3 = st.columns(3)
 with c1:
-    st.metric("機台理想最小秤重量", auto_unit_format(convert_from_g(ideal_min_w, display_unit)))
+    st.metric("機台理想最小秤重量", auto_unit_format(ideal_min_w))
     st.caption("基於 $0.41d$ 理論底線")
 with c2:
-    st.metric("機台實際最小秤重量", auto_unit_format(convert_from_g(usp_min_w, display_unit)))
+    st.metric("機台實際最小秤重量", auto_unit_format(usp_min_w))
     st.caption("⚠️ 已修正" if is_corrected else "✅ 實測計算")
 with c3:
     if not is_snw_unknown:
-        st.metric("客戶設定最小淨重量", auto_unit_format(convert_from_g(snw_g, display_unit)), 
+        st.metric("客戶設定最小淨重量", auto_unit_format(snw_g), 
                   delta=f"SF: {current_sf:.2f}" if current_sf else None, 
                   delta_color="normal" if current_sf and current_sf >= 1 else "inverse")
         st.caption("Smallest Net Weight")
     else:
         st.metric("客戶設定最小淨重量", "待定")
-        st.caption("尚未輸入 SNW")
 
-# --- 7. 報告摘要 (含一鍵複製) ---
+# --- 7. 報告摘要 ---
 st.divider()
 st.markdown("### 📄 專業評估報告摘要")
-st.info("下方內容可直接複製：")
-
 if is_snw_unknown:
-    sf_text = "待決定最小淨重後計算"
-    snw_text = "待定"
-    result_text = "待定 (請輸入 SNW 以判定)"
+    sf_text, snw_text, result_text = "待定", "待定", "待定"
 else:
     sf_text = f"{current_sf:.2f}"
-    snw_text = auto_unit_format(convert_from_g(snw_g, display_unit))
+    snw_text = auto_unit_format(snw_g)
     result_text = "✅ 符合法規" if current_sf >= 1 else "❌ 不符合法規"
 
 copyable_report = f"""【USP 41 專業評估報告 - 2026 Edition】
 ------------------------------------------
 評估結果：{result_text}
-天平分度值 (d): {auto_unit_format(convert_from_g(d1_g, display_unit))}
-理論最小秤量極限 (0.41d): {auto_unit_format(convert_from_g(ideal_min_w, display_unit))}
-重複性實測標準差 (Std): {auto_unit_format(convert_from_g(std_g, display_unit)) if std_g > 0 else "N/A (理論預估)"}
-判定最小秤重量 (MinW): {auto_unit_format(convert_from_g(usp_min_w, display_unit))}
+天平分度值 (d): {auto_unit_format(d1_g)}
+理論最小秤量極限 (0.41d): {auto_unit_format(ideal_min_w)}
+重複性實測標準差 (Std): {auto_unit_format(std_g) if std_g > 0 else "N/A"}
+判定最小秤重量 (MinW): {auto_unit_format(usp_min_w)}
 客戶設定最小淨重 (SNW): {snw_text}
 實際安全係數 (SF): {sf_text} (目標要求: {user_sf})
 ------------------------------------------
 ※ 備註：依據 USP <41>，最小秤重量不應包含皮重容器。
 """
-
 st.code(copyable_report, language="text")
