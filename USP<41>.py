@@ -71,8 +71,9 @@ else:
                 d_g = st.number_input("實際分度值 d (g)", value=0.0001, step=0.0000001, format="%.7f")
                 snw_g = st.number_input("客戶預期最小淨重 (g)", value=0.02, step=0.0000001, format="%.7f")
             with col_b:
-                std_g = st.number_input("重複性實際量測標準差 STD (g)", value=0.00008, step=0.0000001, format="%.7f")
                 rep_w_g = st.number_input("重複性測試砝碼重量 (g)", value=0.1, step=0.0000001, format="%.7f")
+                std_g = st.number_input("重複性實際量測標準差 STD (g)", value=0.00008, step=0.0000001, format="%.7f")
+                
             with col_c:
                 acc_w_g = st.number_input("準確度測試砝碼重量 (g)", value=200.0, step=0.0000001, format="%.7f")
             
