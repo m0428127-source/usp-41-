@@ -3,18 +3,17 @@ import streamlit as st
 # --- 1. 工具函數 ---
 def smart_format(value):
     """ 
-    強制數字呈現（非科學記號），並動態修剪末尾無意義的 0。
+    確保數字呈現（非科學記號），並動態修剪末尾無意義的 0。
     輸入 220 顯示 220, 0.99 顯示 0.99, 0.00001 顯示 0.00001
     """
     if value is None or value == 0: return "0"
-    # 使用精度為 10 位的小數格式，確保小數字不會變成科學記號，再修剪右側 0
-    formatted = format(value, '.10f').rstrip('0').rstrip('.')
-    return formatted if formatted != "" else "0"
+    # 使用 .10g 可以兼顧去零與防止科學記號（到 10 位數都還是數字）
+    formatted = f"{value:.10g}"
+    return formatted
 
 def auto_unit_format(g_value):
     """ 指標卡與報告使用的格式 """
     if g_value is None or g_value == 0: return f"0 {display_unit}"
-    # 將數值轉換回顯示單位後進行格式化
     val_in_unit = convert_from_g(g_value, display_unit)
     return f"{smart_format(val_in_unit)} {display_unit}"
 
@@ -33,7 +32,7 @@ st.set_page_config(page_title="USP <41> 專業合規評估", layout="centered")
 st.title("⚖️ USP 天平合規快速評估")
 st.caption("依據標準：USP-NF 〈41〉 & 〈1251〉 (Official Feb 1, 2026)")
 
-# --- 3. 初始化 Session State (確保數值不因滑動而跳轉) ---
+# --- 3. 初始化 Session State ---
 if 'snw_val' not in st.session_state:
     st.session_state.snw_val = 0.02
 if 'std_val' not in st.session_state:
@@ -51,9 +50,10 @@ with st.sidebar:
     st.checkbox("環境受控，且遠離直接氣流")
 
 st.markdown("### 1️⃣ 設定規格與需求")
-# 設定高精度小數格式，防止 number_input 顯示科學記號
+# 關鍵：這裡改用 %.10g
+# 它會確保 0.99 顯示 0.99 (自動去零)，且 0.00001 不會變科學記號
 p_step = 0.0000001
-p_format = "%.10f" # 這裡改為 f 確保輸入框也不會跳科學記號
+p_format = "%.10g" 
 
 col1, col2 = st.columns(2)
 with col1:
@@ -80,7 +80,6 @@ else:
     active_d_g = convert_to_g(d_val, display_unit)
     d1_g = active_d_g
 
-# 鎖定機制
 if active_d_g != st.session_state.last_d:
     st.session_state.last_d = active_d_g
 
@@ -95,7 +94,7 @@ with col_snw:
                                   min_value=0.0000001, 
                                   value=float(st.session_state.snw_val),
                                   step=p_step,
-                                  format=p_format, # 確保顯示為數字
+                                  format=p_format, 
                                   key="snw_input_field")
         st.session_state.snw_val = snw_raw
         snw_g = convert_to_g(snw_raw, display_unit)
@@ -108,7 +107,7 @@ with col_std:
                                   min_value=0.0000001,
                                   value=float(st.session_state.std_val),
                                   step=p_step,
-                                  format=p_format, # 確保顯示為數字
+                                  format=p_format,
                                   key="std_input_field")
         st.session_state.std_val = std_raw
         std_g = convert_to_g(std_raw, display_unit)
@@ -122,8 +121,6 @@ effective_s = max(std_g, s_limit)
 is_corrected = std_g < s_limit
 usp_min_w = 2000 * effective_s
 ideal_min_w = 2000 * s_limit
-
-# 計算安全係數
 current_sf = snw_g / usp_min_w if (snw_g is not None and usp_min_w > 0) else 0
 
 # --- 6. 專業結論面板 ---
@@ -140,7 +137,7 @@ else:
     else:
         st.error(f"❌ **安全狀態：不合規**")
 
-# 指標卡 (會使用 smart_format 呈現數字)
+# 指標卡
 c1, c2, c3 = st.columns(3)
 with c1:
     st.metric("機台理想最小秤重量", auto_unit_format(ideal_min_w))
