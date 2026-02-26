@@ -65,7 +65,7 @@ with st.sidebar:
 
     st.divider()
     st.header(f"📋 2. 天平基本規格 ({display_unit})")
-    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU多量程 (Multiple range)"])
+    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU_多量程 (Multiple range)"])
     
     p_step = 0.0000001
     p_format = "%.7g"
@@ -89,7 +89,7 @@ else:
     with st.expander(f"📥 測試參數輸入 ({display_unit})", expanded=True):
         col_a, col_b, col_c = st.columns(3)
         
-        if balance_type == "DU多量程 (Multiple range)":
+        if balance_type == "DU_多量程 (Multiple range)":
             with col_a:
                 d1_raw = st.number_input(f"實際分度值 d1 ({display_unit}) - 量程 1", value=float(convert_from_g(0.00001, display_unit)), step=p_step, format=p_format)
                 d2_raw = st.number_input(f"實際分度值 d2 ({display_unit}) - 量程 2", value=float(convert_from_g(0.0001, display_unit)), step=p_step, format=p_format)
