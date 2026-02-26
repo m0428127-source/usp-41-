@@ -1,17 +1,18 @@
 import streamlit as st
 
-# --- 1. 工具函數 ---
-def format_dynamic(value):
-    """ 強制動態修剪位數，去掉末尾無意義的 0，且確保不進位 """
+# --- 1. 工具函數 (採用您偏好的 %g 邏輯) ---
+def smart_format(value):
+    """ 強制動態修剪位數，輸入 220 顯示 220, 0.99 顯示 0.99 """
     if value is None or value == 0: return "0"
-    # 使用 .7f 展開確保抓到 0.99 這種位數，然後去掉右側 0
-    formatted = f"{value:.7f}".rstrip('0').rstrip('.')
-    return formatted if formatted != "" else "0"
+    # 使用 .7g 確保精確度且自動去除末尾無意義的 0
+    return f"{value:.7g}"
 
 def auto_unit_format(g_value):
     """ 指標卡與報告使用的格式 """
     if g_value is None or g_value == 0: return f"0 {display_unit}"
-    return f"{format_dynamic(g_value)} {display_unit}"
+    # 將數值轉換回顯示單位後進行格式化
+    val_in_unit = convert_from_g(g_value, display_unit)
+    return f"{smart_format(val_in_unit)} {display_unit}"
 
 def convert_to_g(value, unit):
     if unit == "mg": return value / 1000
@@ -26,9 +27,9 @@ def convert_from_g(value, unit):
 # --- 2. 網頁配置 ---
 st.set_page_config(page_title="USP <41> 專業合規評估", layout="centered")
 st.title("⚖️ USP 天平合規快速評估")
-st.caption("工程師實測 / 業務快速提案 專業工具版 (2026 Edition)")
+st.caption("依據標準：USP-NF 〈41〉 & 〈1251〉 (Official Feb 1, 2026)")
 
-# --- 3. 初始化 Session State ---
+# --- 3. 初始化 Session State (確保數值不因滑動而跳轉) ---
 if 'snw_val' not in st.session_state:
     st.session_state.snw_val = 0.02
 if 'std_val' not in st.session_state:
@@ -46,6 +47,10 @@ with st.sidebar:
     st.checkbox("環境受控，且遠離直接氣流")
 
 st.markdown("### 1️⃣ 設定規格與需求")
+# 與您提供的穩定參數一致
+p_step = 0.0000001
+p_format = "%.7g"
+
 col1, col2 = st.columns(2)
 with col1:
     balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間", "DU_多量程"])
@@ -60,35 +65,34 @@ d_converted = [float(convert_from_g(x, display_unit)) for x in d_base_options]
 if balance_type in ["DR_多區間", "DU_多量程"]:
     c1, c2 = st.columns(2)
     with c1: 
-        d1_val = st.select_slider(f"d1 (精細) ({display_unit})", options=d_converted, value=d_converted[5], format_func=format_dynamic)
+        d1_val = st.select_slider(f"d1 (精細) ({display_unit})", options=d_converted, value=d_converted[5], format_func=smart_format)
         d1_g = convert_to_g(d1_val, display_unit)
     with c2: 
-        d2_val = st.select_slider(f"d2 (寬鬆) ({display_unit})", options=d_converted, value=d_converted[4], format_func=format_dynamic)
+        d2_val = st.select_slider(f"d2 (寬鬆) ({display_unit})", options=d_converted, value=d_converted[4], format_func=smart_format)
         d2_g = convert_to_g(d2_val, display_unit)
     active_d_g = d1_g
 else:
-    d_val = st.select_slider(f"分度值 d ({display_unit})", options=d_converted, value=d_converted[4], format_func=format_dynamic)
+    d_val = st.select_slider(f"分度值 d ({display_unit})", options=d_converted, value=d_converted[4], format_func=smart_format)
     active_d_g = convert_to_g(d_val, display_unit)
     d1_g = active_d_g
 
-# 防止分度值滑動時覆蓋用戶輸入
+# 鎖定機制：滑動 d 不會重置下方的輸入框值
 if active_d_g != st.session_state.last_d:
     st.session_state.last_d = active_d_g
 
 st.markdown("---")
-# --- 數據輸入區 ---
+# --- 數據輸入區 (核心修正點) ---
 col_snw, col_std = st.columns(2)
 
 with col_snw:
     is_snw_unknown = st.checkbox("尚未決定最小淨重量")
     if not is_snw_unknown:
-        # 注意：format="%.7f" 是為了讓 0.99 不被自動進位為 1
-        # 但因為我們在底下的顯示函數會 format_dynamic，所以使用者看到的結果會去零
+        # 使用 %.7g 確保 0.99 不會變成 1
         snw_raw = st.number_input(f"客戶設定最小淨重量 ({display_unit})", 
                                   min_value=0.0000001, 
-                                  value=st.session_state.snw_val,
-                                  step=0.0000001,
-                                  format="%.7f", 
+                                  value=float(st.session_state.snw_val),
+                                  step=p_step,
+                                  format=p_format,
                                   key="snw_input_field")
         st.session_state.snw_val = snw_raw
         snw_g = convert_to_g(snw_raw, display_unit)
@@ -99,9 +103,9 @@ with col_std:
     if has_std == "手動輸入實測 Std":
         std_raw = st.number_input(f"重複性實測標準差 Std ({display_unit})", 
                                   min_value=0.0000001,
-                                  value=st.session_state.std_val,
-                                  step=0.0000001,
-                                  format="%.7f",
+                                  value=float(st.session_state.std_val),
+                                  step=p_step,
+                                  format=p_format,
                                   key="std_input_field")
         st.session_state.std_val = std_raw
         std_g = convert_to_g(std_raw, display_unit)
@@ -117,7 +121,7 @@ usp_min_w = 2000 * effective_s
 ideal_min_w = 2000 * s_limit
 
 # 計算安全係數
-current_sf = snw_g / usp_min_w if (snw_g is not None and usp_min_w > 0) else None
+current_sf = snw_g / usp_min_w if (snw_g is not None and usp_min_w > 0) else 0
 
 # --- 6. 專業結論面板 ---
 st.divider()
@@ -133,16 +137,17 @@ else:
     else:
         st.error(f"❌ **安全狀態：不合規**")
 
-# 指標卡 (這裡會套用去零邏輯)
+# 指標卡
 c1, c2, c3 = st.columns(3)
 with c1:
     st.metric("機台理想最小秤重量", auto_unit_format(ideal_min_w))
 with c2:
-    st.metric("機台實際最小秤重量", auto_unit_format(usp_min_w))
+    st.metric("機台實際最小秤重量", auto_unit_format(usp_min_w), 
+              delta="法規修正" if is_corrected else None, delta_color="inverse")
 with c3:
     if not is_snw_unknown:
         st.metric("客戶設定最小淨重量", auto_unit_format(snw_g), 
-                  delta=f"SF: {current_sf:.2f}" if current_sf else None)
+                  delta=f"SF: {current_sf:.2f}" if current_sf > 0 else None)
     else:
         st.metric("客戶設定最小淨重量", "待定")
 
@@ -157,7 +162,6 @@ else:
     snw_text = auto_unit_format(snw_g)
     result_text = "✅ 符合法規" if current_sf >= 1 else "❌ 不符合法規"
 
-# 這裡生成的文字報告，Std 會顯示你輸入的 0.99，不會變 1
 copyable_report = f"""【USP 41 專業評估報告 - 2026 Edition】
 ------------------------------------------
 評估結果：{result_text}
