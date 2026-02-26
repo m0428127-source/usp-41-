@@ -31,13 +31,13 @@ with st.sidebar:
     balance_status = st.checkbox("天平已預熱並完成水平調整")
     
     if not (env_surface and env_location and env_static and balance_status):
-        st.warning("⚠️ 依循 USP<1251> 環境檢核未完成，量測不穩定風險提高。")
+        st.warning("⚠️ 未滿足 USP<1251> 建議環境，警告量測不穩定風險將提高。")
     else:
-        st.success("✅ 依循 USP<1251> 環境檢查完成，準備執行測試。")
+        st.success("✅ 滿足 USP<1251> 建議環境，檢查完成，準備執行測試。")
 
     st.divider()
     st.header("📋 2. 天平基本規格 (g)")
-    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU多量程 (Multiple range)"])
+    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU_多量程 (Multiple range)"])
     max_cap_g = st.number_input("天平最大秤重量 Max Capacity (g)", value=220.0, step=0.0000001, format="%.7f")
     is_manufacturing = st.checkbox("用於製造用途 (Manufacturing)?")
 
@@ -48,7 +48,7 @@ else:
     ranges_to_test = 1
     if balance_type == "DU多量程 (Multiple range)":
         ranges_to_test = st.number_input("預計使用的量程數量", min_value=1, max_value=3, value=1)
-        st.info("💡 **多量程提醒**：若需進入較粗量程，請使用預載物 (Preload) 或皮重容器。")
+        st.info("💡 **多量程提醒**：若需進入較粗量程(coarse range)，請使用預載物 (Preload) 或皮重容器。")
 
     # 數據輸入區
     range_data = []
