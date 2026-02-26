@@ -108,25 +108,24 @@ is_corrected = std_g < s_limit_d1
 usp_min_w = 2000 * effective_s
 current_sf = snw_g / usp_min_w if (snw_g is not None and usp_min_w > 0) else 0
 
-# --- 6. 專業結論面板 (方案一：進度條) ---
 st.divider()
 st.markdown("### 🏁 專業評估結論")
 
 if is_snw_unknown:
     st.info("💡 目前已計算出機台最小秤量門檻。")
 else:
-    # 以目標 SF 為 100% 計算進度
-    progress_val = min(current_sf / user_sf, 1.0)
+    snw_display = auto_unit_format(snw_g)
+    minw_display = auto_unit_format(usp_min_w)
     
     if current_sf >= user_sf:
-        st.success(f"🛡️ **安全狀態：優良** | 實際 SF: {current_sf:.2f} (已達標: {user_sf})")
-        st.progress(progress_val)
+        msg = f"已達標：當前 SNW ({snw_display}) 處於安全秤量區間，安全緩衝充足。"
+        st.success(f"### 🛡️ 安全狀態：優良\n{msg}")
     elif current_sf >= 1:
-        st.warning(f"⚠️ **安全狀態：高風險** | 雖符合法規，但低於目標安全係數 {user_sf}")
-        st.progress(progress_val)
+        msg = f"請注意：當前 SNW ({snw_display}) 雖合法但緩衝不足，建議將目標 SF 提升至 {user_sf}。"
+        st.warning(f"### ⚠️ 安全狀態：高風險\n{msg}")
     else:
-        st.error(f"❌ **安全狀態：不合規** | 實際 SF: {current_sf:.2f} (低於法規極限 1.0)")
-        st.progress(0.0)
+        msg = f"嚴重警告：當前 SNW ({snw_display}) 低於判定門檻 MinW ({minw_display})，不符合 USP <41>。"
+        st.error(f"### ❌ 安全狀態：不合規\n{msg}")
 
 # 指標卡區塊
 if d2_g:
