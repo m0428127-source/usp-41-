@@ -1,6 +1,6 @@
 import streamlit as st
 
-# --- 工具函數 ---
+# --- 1. 工具函數 (嚴格保持精度與自動單位轉換) ---
 def smart_format(value):
     if value == 0: return "0"
     return f"{value:.7g}"
@@ -22,149 +22,94 @@ def convert_from_g(value, unit):
     if unit == "kg": return value / 1000
     return value
 
-# 設定網頁標題與風格
-st.set_page_config(page_title="USP <41> & <1251> 專業合規工作站", layout="wide")
-st.title("⚖️ USP 〈41〉 & 〈1251〉 天平測試合規工作站")
-st.caption("依據標準：USP-NF 〈41〉 & 〈1251〉 (Official Feb 1, 2026)")
+# --- 2. 網頁配置 (手機優先) ---
+st.set_page_config(page_title="USP <41> 專業合規評估", layout="centered")
+st.title("⚖️ USP 天平合規快速評估")
+st.caption("工程師與業務專用工具 (2026 Feb 1st Edition)")
 
-# --- 側邊欄：1. 檢查前作為 (Pre-check) ---
+# --- 3. 側邊欄：環境檢核 ---
 with st.sidebar:
     st.header("⚙️ 顯示設定")
-    display_unit = st.selectbox("偏好顯示單位", ["g", "mg", "kg"], index=0)
+    display_unit = st.selectbox("顯示單位", ["g", "mg", "kg"], index=0)
     st.divider()
-    st.header("🔍 1. 檢查前作為 (Pre-check)")
-    st.markdown("依據 USP 〈1251〉 規範，請先確認環境與設備狀態：")
-    env_surface = st.checkbox("水平且非磁性的穩固表面 (Level & Nonmagnetic)")
-    env_location = st.checkbox("遠離氣流、門窗、震動源與熱源")
-    env_static = st.checkbox("濕度控制適當或已具備除靜電措施")
-    balance_status = st.checkbox("天平已預熱並完成水平調整")
-    if not (env_surface and env_location and env_static and balance_status):
-        st.warning("⚠️ 依循 USP<1251> 環境檢核未完成，量測不穩定風險提高。")
-    else:
-        st.success("✅ 依循 USP<1251> 環境檢查完成，準備執行測試。")
+    st.header("🔍 環境檢查 (USP 1251)")
+    env_all = st.checkbox("水平、穩固、遠離氣流與熱源")
+    preheat = st.checkbox("天平已預熱並校準完成")
+    if not (env_all and preheat):
+        st.warning("⚠️ 環境不理想會顯著降低安全係數")
 
-# --- 主頁面邏輯 ---
-range_data = []
-p_step = 0.0000001
-p_format = "%.7g"
+# --- 4. 快速輸入區 (業務常用場景) ---
+st.markdown("### 1️⃣ 機台規格與需求")
+col_a, col_b = st.columns(2)
+with col_a:
+    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間", "DU_多量程"])
+with col_b:
+    d_base_options = [1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
+    d_converted = [float(smart_format(convert_from_g(x, display_unit))) for x in d_base_options]
+    d_raw = st.select_slider(f"分度值 d ({display_unit})", options=d_converted, value=d_converted[4])
+    d_g = convert_to_g(d_raw, display_unit)
 
-# --- 數據輸入區 ---
-with st.expander(f"📥 測試參數輸入 ({display_unit})", expanded=True):
-    tab_base, tab_process, tab_std, tab_acc = st.tabs([
-        "📋 天平基本規格", "🎯 Process requirement", "📊 重複性測試", "🎯 準確性測試"
-    ])
+snw_raw = st.number_input(f"客戶預期最小淨重 ({display_unit})", 
+                         value=float(convert_from_g(0.02, display_unit)), 
+                         format="%.7g")
+snw_g = convert_to_g(snw_raw, display_unit)
+
+st.markdown("### 2️⃣ 現場實測數據")
+std_raw = st.number_input(f"重複性實測標準差 STD ({display_unit})", 
+                         value=float(smart_format(d_raw * 0.8)), # 預設給一個參考值
+                         format="%.7g")
+std_g = convert_to_g(std_raw, display_unit)
+
+# --- 5. 核心邏輯計算 (USP <41>) ---
+s_threshold_g = 0.41 * d_g
+actual_min_weight_g = 2000 * max(std_g, s_threshold_g)
+ideal_min_weight_g = 2000 * s_threshold_g
+safety_factor = snw_g / actual_min_weight_g if actual_min_weight_g > 0 else 0
+
+# --- 6. 視覺化診斷結果 (手機優先佈局) ---
+st.divider()
+st.markdown("### 🏁 評估結論")
+
+# 安全係數儀表判定
+if safety_factor >= 2:
+    st.success(f"### 🛡️ 安全係數 (SF): {safety_factor:.2f} (極佳)")
+    st.caption("✅ 滿足 USP 1251 建議值，製程風險極低。")
+elif safety_factor >= 1:
+    st.warning(f"### 🛡️ 安全係數 (SF): {safety_factor:.2f} (邊緣)")
+    st.caption("⚠️ 已達法規底線，但環境波動可能導致不合規，建議提升 SF 至 2。")
+else:
+    st.error(f"### 🛡️ 安全係數 (SF): {safety_factor:.2f} (不符合)")
+    st.caption("❌ 該天平或環境無法滿足此秤量需求。")
+
+# 三位一體對比指標卡
+st.markdown("#### 📊 性能對比")
+c1, c2, c3 = st.columns(3)
+c1.metric("機台理論極限", auto_unit_format(ideal_min_weight_g))
+c2.metric("現場實測最小秤重", auto_unit_format(actual_min_weight_g), 
+          delta=f"{(actual_min_weight_g/ideal_min_weight_g):.1f}x 理論值", delta_color="inverse")
+c3.metric("客戶目標淨重", auto_unit_format(snw_g))
+
+# --- 7. 專業背書區 (預設摺疊) ---
+with st.expander("📄 查看詳細法規判斷依據 (USP <41>)"):
+    # 準確度測試簡易輸入
+    acc_w_raw = st.number_input("準確度測試砝碼重", value=snw_raw * 10)
+    acc_w_g = convert_to_g(acc_w_raw, display_unit)
+    mpe_limit = acc_w_g * (0.05 / 100 / 3)
     
-    with tab_base:
-        balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU_多量程 (Multiple range)"])
-        raw_max_cap = st.number_input(f"天平最大秤重量 Max Capacity ({display_unit})", value=float(convert_from_g(220.0, display_unit)), step=p_step, format=p_format)
-        max_cap_g = convert_to_g(raw_max_cap, display_unit)
-        is_manufacturing = st.checkbox("用於製造用途 (Manufacturing)?")
+    st.markdown(f"""
+    * **重複性判定標準**：$2 \\times s / m_{{目標}} \\le 0.10\\%$
+    * **標準差修正**：若實測 $s < {auto_unit_format(s_threshold_g)}$，則採 $\{auto_unit_format(s_threshold_g)}\}$ 計算。
+    * **準確度建議**：砝碼不確定度 $U$ 應 $\le {auto_unit_format(mpe_limit)}$。
+    """)
+    if st.button("生成專業評估摘要", use_container_width=True):
+        st.code(f"""
+        【USP 41 天平評估報告】
+        機台分度值: {auto_unit_format(d_g)}
+        客戶目標淨重: {auto_unit_format(snw_g)}
+        實測最小秤量: {auto_unit_format(actual_min_weight_g)}
+        安全係數: {safety_factor:.2f}
+        判定結論: {"符合需求" if safety_factor >= 1 else "不符合需求"}
+        """)
 
-        d_base_options = [1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001]
-        d_converted_options = [float(smart_format(convert_from_g(x, display_unit))) for x in d_base_options]
-
-        if balance_type == "DU_多量程 (Multiple range)":
-            d1_slider = st.select_slider(f"選擇常用分度值 d1 ({display_unit})", options=d_converted_options, value=d_converted_options[5])
-            d1_raw = st.number_input(f"實際分度值 d1 ({display_unit}) - 量程 1", value=d1_slider, step=p_step, format=p_format)
-            d2_slider = st.select_slider(f"選擇常用分度值 d2 ({display_unit})", options=d_converted_options, value=d_converted_options[4])
-            d2_raw = st.number_input(f"實際分度值 d2 ({display_unit}) - 量程 2", value=d2_slider, step=p_step, format=p_format)
-            d1_g, d2_g = convert_to_g(d1_raw, display_unit), convert_to_g(d2_raw, display_unit)
-        else:
-            d_slider = st.select_slider(f"選擇常用分度值 d ({display_unit})", options=d_converted_options, value=d_converted_options[4])
-            d_raw = st.number_input(f"實際分度值 d ({display_unit})", value=d_slider, step=p_step, format=p_format)
-            d_g = convert_to_g(d_raw, display_unit)
-
-    if not is_manufacturing:
-        with tab_process:
-            if balance_type == "DU_多量程 (Multiple range)":
-                snw1_raw = st.number_input(f"客戶預期最小淨重 ({display_unit}) - 量程 1", value=float(convert_from_g(0.02, display_unit)), step=p_step, format=p_format)
-                snw2_raw = st.number_input(f"客戶預期最小淨重 ({display_unit}) - 量程 2", value=float(convert_from_g(0.2, display_unit)), step=p_step, format=p_format)
-                snw1_g, snw2_g = convert_to_g(snw1_raw, display_unit), convert_to_g(snw2_raw, display_unit)
-            else:
-                snw_raw = st.number_input(f"客戶預期最小淨重 ({display_unit})", value=float(convert_from_g(0.02, display_unit)), step=p_step, format=p_format)
-                snw_g = convert_to_g(snw_raw, display_unit)
-
-        with tab_std:
-            if balance_type == "DU_多量程 (Multiple range)":
-                std1_raw = st.number_input(f"實際量測標準差 STD1 ({display_unit}) - 量程 1", value=float(convert_from_g(0.000008, display_unit)), step=p_step, format=p_format)
-                std2_raw = st.number_input(f"實際量測標準差 STD2 ({display_unit}) - 量程 2", value=float(convert_from_g(0.00008, display_unit)), step=p_step, format=p_format)
-                std1_g, std2_g = convert_to_g(std1_raw, display_unit), convert_to_g(std2_raw, display_unit)
-            else:
-                std_raw = st.number_input(f"重複性實際量測標準差 STD ({display_unit})", value=float(convert_from_g(0.00008, display_unit)), step=p_step, format=p_format)
-                std_g = convert_to_g(std_raw, display_unit)
-            rep_w_raw = st.number_input(f"重複性測試砝碼重量 ({display_unit})", value=float(convert_from_g(0.1, display_unit)), step=p_step, format=p_format)
-            rep_w_g = convert_to_g(rep_w_raw, display_unit)
-
-        with tab_acc:
-            acc_w_raw = st.number_input(f"準確度測試砝碼重量 ({display_unit})", value=float(convert_from_g(200.0, display_unit)), step=p_step, format=p_format)
-            acc_w_g = convert_to_g(acc_w_raw, display_unit)
-
-        if balance_type == "DU_多量程 (Multiple range)":
-            range_data.append({"d": d1_g, "std": std1_g, "snw": snw1_g, "rep_w": rep_w_g, "acc_w": acc_w_g, "label": "量程 1"})
-            range_data.append({"d": d2_g, "std": std2_g, "snw": snw2_g, "rep_w": rep_w_g, "acc_w": acc_w_g, "label": "量程 2"})
-        else:
-            range_data.append({"d": d_g, "std": std_g, "snw": snw_g, "rep_w": rep_w_g, "acc_w": acc_w_g, "label": "量程"})
-
-# --- 執行診斷按鈕 ---
-if not is_manufacturing and st.button("🚀 執行全面合規性診斷", use_container_width=True):
-    st.subheader("🏁 USP 〈41〉 設備適宜性診斷報告")
-    for idx, data in enumerate(range_data):
-        s_threshold_g = 0.41 * data['d']
-        rep_min_g, rep_max_g = 0.100, max_cap_g * 0.05
-        acc_min_g, acc_max_g = max_cap_g * 0.05, max_cap_g
-        
-        # 核心邏輯修正：考慮 1/3 * 0.05%
-        mpe_limit_ratio = (0.05 / 100) / 3 
-        mpe_absolute_g = data['acc_w'] * mpe_limit_ratio
-        
-        actual_min_weight_g = 2000 * max(data['std'], s_threshold_g)
-        safety_factor = data['snw'] / actual_min_weight_g if actual_min_weight_g > 0 else 0
-
-        with st.container(border=True):
-            st.markdown(f"### 📍 {data['label']} 診斷結果 (d = {auto_unit_format(data['d'])})")
-            diag_col1, diag_col2 = st.columns(2)
-            with diag_col1:
-                st.info("#### 1. 重複性測試要求 (Repeatability)")
-                is_rep_ok = rep_min_g <= data['rep_w'] <= rep_max_g
-                st.markdown(f"""
-                **【法規規格要求】**
-                * **砝碼區間**：`{auto_unit_format(rep_min_g)}` ~ `{auto_unit_format(rep_max_g)}`
-                * **允收標準**：$2 \\times s / m_{{SNW}} \\le 0.10\\%$
-                * **關鍵限制**：若 $s < {auto_unit_format(s_threshold_g)}$ ($0.41d$)，計算時需以該值取代。
-                """)
-                if is_rep_ok: st.success(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{auto_unit_format(data['rep_w'])}` (✅ 符合規範)")
-                else: st.error(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{auto_unit_format(data['rep_w'])}` (❌ 規格不符)")
-
-            with diag_col2:
-                st.info("#### 2. 準確度測試要求 (Accuracy)")
-                is_acc_ok = acc_min_g <= data['acc_w'] <= acc_max_g
-                st.markdown(f"""
-                **【法規規格要求】**
-                * **砝碼區間**：`{auto_unit_format(acc_min_g)}` ~ `{auto_unit_format(acc_max_g)}`
-                * **允收標準**：誤差 $\le 0.05\\%$
-                * **砝碼限制**：$MPE$ 或 $U$ 需小於 **{mpe_limit_ratio*100:.4f}\\%** (即 0.05% 的 1/3)。
-                """)
-                if is_acc_ok: st.success(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{auto_unit_format(data['acc_w'])}` (✅ 符合規範)")
-                else: st.error(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{auto_unit_format(data['acc_w'])}` (❌ 規格不符)")
-                st.caption(f"💡 砝碼重量為 {auto_unit_format(data['acc_w'])}，證書擴展不確定度 $U$ 須 $\le {auto_unit_format(mpe_absolute_g)}$")
-
-            st.markdown(f"#### 🛡️ 關鍵秤量能力判定")
-            res_c1, res_c2, res_c3, res_c4 = st.columns(4)
-            res_c1.metric("最小淨重量 (理想 0.41d)", auto_unit_format(2000 * s_threshold_g))
-            res_c2.metric("最小秤重量 (實際 MinW)", auto_unit_format(actual_min_weight_g))
-            res_c3.metric("客戶預期最小淨重量", auto_unit_format(data['snw']))
-            res_c4.metric("安全係數 (SF)", f"{safety_factor:.2f}")
-
-            if data['snw'] >= actual_min_weight_g:
-                st.success(f"✅ **{data['label']} 判定：符合秤量需求** (預期 {auto_unit_format(data['snw'])} $\ge$ 實際 {auto_unit_format(actual_min_weight_g)})")
-            else:
-                st.error(f"❌ **{data['label']} 判定：不符合需求** (預期 {auto_unit_format(data['snw'])} < 實際 {auto_unit_format(actual_min_weight_g)})")
-        st.divider()
-
-st.subheader("📑 專業評估指標說明")
-st.info("""
-* **理想最小秤重量 (Minimum weight SNW)**: 基於機台可讀數 $d$ 的理論最優值，代表天平在無環境干擾下的極限。
-* **最小秤重量 (Minimum weight MinW)**: 依據現場重複性測試 (STD) 算得之真實值。若實測 STD 優於 $0.41d$，則法規強制以 $0.41d$ 計算。
-* **判定基準**: 當「客戶預期最小淨重」 $\ge$ 「最小秤重量」時，該量程判定為「符合秤量需求」。
-* **安全係數 (Safety Factor)**: 反映用戶秤量目標相對於法規底線的裕度。USP 〈1251〉 建議安全係數應 $\ge 2$ 以確保製程穩定。
-""")
+st.divider()
+st.info("💡 **業務小撇步**：若安全係數低於 2，可向客戶建議改善避震桌面或推薦更高規型號。")
