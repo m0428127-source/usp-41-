@@ -26,7 +26,7 @@ def convert_from_g(value, unit):
 # --- 2. 網頁配置 ---
 st.set_page_config(page_title="USP <41> 專業合規評估", layout="centered")
 st.title("⚖️ USP 天平合規快速評估")
-st.caption("工程師實測 / 業務快速提案 雙模工具 (2026 Edition)")
+st.caption("工程師實測 / 業務快速提案 雙模工具 (Official Feb 1, 2026)")
 
 # --- 3. 初始化 Session State (記憶功能) ---
 if 'user_std_input' not in st.session_state:
@@ -57,14 +57,16 @@ d_converted = [float(smart_format(convert_from_g(x, display_unit))) for x in d_b
 
 if balance_type in ["DR_多區間", "DU_多量程"]:
     c1, c2 = st.columns(2)
-    with c1: d1_g = convert_to_g(st.select_slider(f"d1 ({display_unit})", options=d_converted, value=d_converted[5]), display_unit)
-    with c2: d2_g = convert_to_g(st.select_slider(f"d2 ({display_unit})", options=d_converted, value=d_converted[4]), display_unit)
+    with c1: 
+        d1_g = convert_to_g(st.select_slider(f"d1 (精細) ({display_unit})", options=d_converted, value=d_converted[5]), display_unit)
+    with c2: 
+        d2_g = convert_to_g(st.select_slider(f"d2 (寬鬆) ({display_unit})", options=d_converted, value=d_converted[4]), display_unit)
     active_d_g = d1_g
 else:
     active_d_g = convert_to_g(st.select_slider(f"分度值 d ({display_unit})", options=d_converted, value=d_converted[4]), display_unit)
     d1_g = active_d_g
 
-# 自動更新 STD 預設值
+# 自動更新 STD 預設值 (若換型號則自動帶入 0.8d)
 if active_d_g != st.session_state.last_active_d:
     st.session_state.user_std_input = float(smart_format(convert_from_g(active_d_g * 0.8, display_unit)))
     st.session_state.last_active_d = active_d_g
@@ -72,7 +74,7 @@ if active_d_g != st.session_state.last_active_d:
 st.markdown("---")
 col_snw, col_std = st.columns(2)
 with col_snw:
-    snw_g = convert_to_g(st.number_input(f"客戶目標淨重 ({display_unit})", value=float(convert_from_g(0.02, display_unit)), format="%.7g"), display_unit)
+    snw_g = convert_to_g(st.number_input(f"客戶設定最小淨重量 ({display_unit})", value=float(convert_from_g(0.02, display_unit)), format="%.7g"), display_unit)
 
 with col_std:
     if has_std == "手動輸入 STD":
@@ -80,49 +82,69 @@ with col_std:
         st.session_state.user_std_input = std_raw
         std_g = convert_to_g(std_raw, display_unit)
     else:
-        st.write("模式：理論極限預估")
+        st.write("**評估模式：理論極限預估**")
         std_g = 0
 
-# --- 5. 核心計算 ---
+# --- 5. 核心計算 (依據 USP <41> 2026) ---
+# 理論極限 s = 0.41d [cite: 25]
 s_limit = 0.41 * d1_g
+# 最小秤重量 m_min = 2000 * max(s, 0.41d) 
 usp_min_w = 2000 * max(std_g, s_limit)
-safe_min_w = usp_min_w * user_sf
+# 理想極限 (s固定為0.41d) 
+ideal_min_w = 2000 * s_limit
+# 安全係數計算 
 current_sf = snw_g / usp_min_w if usp_min_w > 0 else 0
 
 # --- 6. 視覺化圖表區 ---
 st.divider()
 st.markdown("### 🏁 評估結論視覺化")
 
-# 準備圖表數據
-# 我們建立一個對比：法規線 vs 安全線 vs 客戶實際目標
-chart_data = pd.DataFrame({
-    "指標項目": ["法規底線 (SF=1)", "建議門檻 (SF={})".format(user_sf), "客戶目標"],
-    "重量值 (g)": [usp_min_w, safe_min_w, snw_g]
-})
-
-# 使用 st.bar_chart 或是自定義色彩顯示
-# 這裡用一個更直觀的進度條方式來模擬「安全尺」
 status_color = "green" if current_sf >= user_sf else "orange" if current_sf >= 1 else "red"
-
-# 計算目標在尺規上的位置 (以安全門檻為 100% 基準)
-progress_val = min(snw_g / (safe_min_w * 1.5), 1.0) 
-st.write(f"**安全狀態評級：**")
-if status_color == "green": st.success(f"🛡️ 安全 (當前 SF: {current_sf:.2f})")
-elif status_color == "orange": st.warning(f"⚠️ 高風險 (當前 SF: {current_sf:.2f})")
-else: st.error(f"❌ 不合規 (當前 SF: {current_sf:.2f})")
+if status_color == "green": st.success(f"🛡️ **安全狀態：優良** (當前 SF: {current_sf:.2f})")
+elif status_color == "orange": st.warning(f"⚠️ **安全狀態：高風險** (當前 SF: {current_sf:.2f})")
+else: st.error(f"❌ **安全狀態：不合規** (當前 SF: {current_sf:.2f})")
 
 # 畫出對比橫條圖
+chart_data = pd.DataFrame({
+    "指標項目": ["機台理想極限", "機台實際最小秤量", "客戶設定淨重"],
+    "重量值 (g)": [ideal_min_w, usp_min_w, snw_g]
+})
 st.bar_chart(data=chart_data.set_index("指標項目"), use_container_width=True)
 
-# 指標卡補充
+# --- 指標卡補充 (更新標題與備註) ---
 c1, c2, c3 = st.columns(3)
-c1.metric("法規 MinW", auto_unit_format(usp_min_w))
-c2.metric(f"建議 MinW (SF={user_sf})", auto_unit_format(safe_min_w))
-c3.metric("客戶目標", auto_unit_format(snw_g), delta=f"SF: {current_sf:.2f}", delta_color="normal" if current_sf >= 1 else "inverse")
+with c1:
+    st.metric("機台理想最小秤重量", auto_unit_format(ideal_min_w))
+    st.caption("基於 $0.41d$ 理論極限 ")
 
-st.info(f"💡 視覺化說明：藍色長條代表重量。您的目標長條必須**高於**建議門檻，才能確保在現場環境波動下依然合規。")
+with c2:
+    st.metric("機台實際最小秤重量", auto_unit_format(usp_min_w))
+    st.caption("標準差 < $0.41d$ 則使用 $0.41d$ ")
+
+with c3:
+    st.metric("客戶設定最小淨重量", auto_unit_format(snw_g), 
+              delta=f"當前 SF: {current_sf:.2f}", 
+              delta_color="normal" if current_sf >= 1 else "inverse")
+    st.caption("由使用者自定義之需求 ")
+
+st.divider()
+st.info(f"""
+💡 **指標說明：**
+* **安全係數 (Safety Factor)：** 計算方式為 **客戶設定最小淨重量 / 機台實際最小秤重量** 。
+* **合規提醒：** 根據 USP 〈41〉，客戶設定的最小淨重量 **不得小於** 天平實測出的最小秤重量 (即 SF 必須 $\ge 1$) 。
+""")
 
 # --- 7. 報告摘要 ---
-with st.expander("📄 查看專業文字報告"):
-    summary = f"評估結果：{'✅ 合規' if current_sf >= user_sf else '❌ 建議升級'}\n機台極限：{auto_unit_format(2000*s_limit)}\n實際 MinW：{auto_unit_format(usp_min_w)}\n目標重量：{auto_unit_format(snw_g)}\n當前安全係數：{current_sf:.2f}"
+with st.expander("📄 查看專業文字報告摘要"):
+    summary = f"""【USP 41 評估報告】
+評估結果：{'✅ 合規' if current_sf >= 1 else '❌ 不合規'}
+安全水位：{'🛡️ 充足' if current_sf >= user_sf else '⚠️ 建議提升'}
+---------------------------------
+機台理想極限 (0.41d): {auto_unit_format(ideal_min_w)}
+機台實際最小秤量: {auto_unit_format(usp_min_w)}
+客戶設定最小淨重: {auto_unit_format(snw_g)}
+當前安全係數 (SF): {current_sf:.2f} (目標: {user_sf})
+---------------------------------
+備註：最小秤重量不含皮重容器重量 [cite: 29]。
+"""
     st.code(summary)
