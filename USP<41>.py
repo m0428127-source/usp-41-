@@ -37,7 +37,7 @@ with st.sidebar:
 
     st.divider()
     st.header("📋 2. 天平基本規格 (g)")
-    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU_多量程 (Multiple range)"])
+    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "_多量程 (Multiple range)"])
     max_cap_g = st.number_input("天平最大秤重量 Max Capacity (g)", value=220.0, step=0.0000001, format="%.7f")
     is_manufacturing = st.checkbox("用於製造用途 (Manufacturing)?")
 
@@ -46,7 +46,7 @@ if is_manufacturing:
     st.error("🚨 **法規邊界提醒**：USP 〈41〉 的範圍不涵蓋「製造用」天平。請確認您的用途是否為分析流程。")
 else:
     ranges_to_test = 1
-    if balance_type == "DU多量程 (Multiple range)":
+    if balance_type == "DU_多量程 (Multiple range)":
         ranges_to_test = st.number_input("預計使用的量程數量", min_value=1, max_value=3, value=1)
         st.info("💡 **多量程提醒**：若需進入較粗量程(coarse range)，請使用預載物 (Preload) 或皮重容器。")
 
@@ -110,7 +110,7 @@ else:
                 else:
                     st.error(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{format_weight_with_unit(data['rep_w'])}` ({status_rep_text})")
                 
-                if balance_type == "DU多量程 (Multiple range)" and idx > 0:
+                if balance_type == "DU_多量程 (Multiple range)" and idx > 0:
                     st.warning("⚠️ **工程師提醒**：此量程測試需先放置預載物 (Preload)。")
 
             with diag_col2:
