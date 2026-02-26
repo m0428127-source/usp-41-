@@ -42,7 +42,7 @@ with st.sidebar:
     st.checkbox("天平放置於穩固、水平檯面")
     st.checkbox("環境受控，且遠離直接氣流")
 
-st.markdown("### 1️⃣ 設定規格與需求")
+st.markdown("### 📋 1️⃣ 設定規格與需求")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -73,6 +73,8 @@ if active_d_g != st.session_state.last_d:
     st.session_state.last_d = active_d_g
 
 st.markdown("---")
+st.markdown("### 📥 2️⃣ 數據輸入區")
+
 col_snw, col_std = st.columns(2)
 with col_snw:
     is_snw_unknown = st.checkbox("尚未決定最小淨重量")
@@ -108,9 +110,9 @@ is_corrected = std_g < s_limit_d1
 usp_min_w = 2000 * effective_s
 current_sf = snw_g / usp_min_w if (snw_g is not None and usp_min_w > 0) else 0
 
-# --- 6. 專業結論面板 (方案三：強化版) ---
+# --- 6. 專業結論面板 ---
 st.divider()
-st.markdown("### 2️⃣ 評估結論")
+st.markdown("### 🏁 3️⃣ 評估結論")
 
 if is_snw_unknown:
     st.info("💡 目前已計算出機台最小秤量門檻。")
@@ -118,11 +120,8 @@ else:
     snw_display = auto_unit_format(snw_g)
     minw_display = auto_unit_format(usp_min_w)
     
-    # 1. 顯示核心數值：當前安全係數 (SF)
-    # 使用 st.metric 或大標題呈現
     st.markdown(f"#### 當前實際安全係數 (SF): `{current_sf:.2f}`")
 
-    # 2. 根據條件顯示狀態與詳細訊息
     if current_sf >= user_sf:
         msg = f"已達標：當前最小淨重 ({snw_display}) 遠高於判定門檻 ({minw_display})，安全緩衝充足。"
         st.success(f"### 🛡️ 安全狀態：優良\n{msg}")
@@ -132,8 +131,6 @@ else:
     else:
         msg = f"嚴重警告：當前最小淨重 ({snw_display}) 已低於 USP <41> 判定之最小秤量門檻 ({minw_display})，將導致合規性失效。"
         st.error(f"### ❌ 安全狀態：不合規\n{msg}")
-
-# --- 下方接續原有的指標卡 (st.metric) ---}")
 
 # 指標卡區塊
 if d2_g:
@@ -150,7 +147,7 @@ else:
 
 # --- 7. 報告摘要 ---
 st.divider()
-st.markdown("### 📄 專業評估報告摘要")
+st.markdown("### 📄 4️⃣ 專業評估報告摘要")
 
 if is_snw_unknown:
     sf_text, snw_text, result_text, detail_note = "待定", "待定", "待定", "尚未輸入淨重數據"
@@ -184,3 +181,11 @@ copyable_report = f"""【USP 41 專業評估報告 - 2026 Edition】
 ------------------------------------------
 """
 st.code(copyable_report, language="text")
+
+# 加入下載按鈕增加優化感
+st.download_button(
+    label="📥 下載文字報告 (.txt)",
+    data=copyable_report,
+    file_name=f"USP41_Report_{snw_text.replace(' ', '')}.txt",
+    mime="text/plain"
+)
