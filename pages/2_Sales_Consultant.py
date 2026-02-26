@@ -1,11 +1,15 @@
 import streamlit as st
 
-# --- 1. 工具函數 (採用您偏好的 %g 邏輯) ---
+# --- 1. 工具函數 ---
 def smart_format(value):
-    """ 強制動態修剪位數，輸入 220 顯示 220, 0.99 顯示 0.99 """
+    """ 
+    強制數字呈現（非科學記號），並動態修剪末尾無意義的 0。
+    輸入 220 顯示 220, 0.99 顯示 0.99, 0.00001 顯示 0.00001
+    """
     if value is None or value == 0: return "0"
-    # 使用 .7g 確保精確度且自動去除末尾無意義的 0
-    return f"{value:.7g}"
+    # 使用精度為 10 位的小數格式，確保小數字不會變成科學記號，再修剪右側 0
+    formatted = format(value, '.10f').rstrip('0').rstrip('.')
+    return formatted if formatted != "" else "0"
 
 def auto_unit_format(g_value):
     """ 指標卡與報告使用的格式 """
@@ -47,9 +51,9 @@ with st.sidebar:
     st.checkbox("環境受控，且遠離直接氣流")
 
 st.markdown("### 1️⃣ 設定規格與需求")
-# 與您提供的穩定參數一致
+# 設定高精度小數格式，防止 number_input 顯示科學記號
 p_step = 0.0000001
-p_format = "%.7g"
+p_format = "%.10f" # 這裡改為 f 確保輸入框也不會跳科學記號
 
 col1, col2 = st.columns(2)
 with col1:
@@ -59,7 +63,7 @@ with col2:
     has_std = st.radio("評估模式", ["手動輸入實測 Std", "無數據 (理論預估)"])
 
 # 可讀數清單
-d_base_options = [1.0, 0.5, 0.2, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001,0.0000001]
+d_base_options = [1.0, 0.5, 0.2, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001]
 d_converted = [float(convert_from_g(x, display_unit)) for x in d_base_options]
 
 if balance_type in ["DR_多區間", "DU_多量程"]:
@@ -76,23 +80,22 @@ else:
     active_d_g = convert_to_g(d_val, display_unit)
     d1_g = active_d_g
 
-# 鎖定機制：滑動 d 不會重置下方的輸入框值
+# 鎖定機制
 if active_d_g != st.session_state.last_d:
     st.session_state.last_d = active_d_g
 
 st.markdown("---")
-# --- 數據輸入區 (核心修正點) ---
+# --- 數據輸入區 ---
 col_snw, col_std = st.columns(2)
 
 with col_snw:
     is_snw_unknown = st.checkbox("尚未決定最小淨重量")
     if not is_snw_unknown:
-        # 使用 %.7g 確保 0.99 不會變成 1
         snw_raw = st.number_input(f"客戶設定最小淨重量 ({display_unit})", 
                                   min_value=0.0000001, 
                                   value=float(st.session_state.snw_val),
                                   step=p_step,
-                                  format=p_format,
+                                  format=p_format, # 確保顯示為數字
                                   key="snw_input_field")
         st.session_state.snw_val = snw_raw
         snw_g = convert_to_g(snw_raw, display_unit)
@@ -105,7 +108,7 @@ with col_std:
                                   min_value=0.0000001,
                                   value=float(st.session_state.std_val),
                                   step=p_step,
-                                  format=p_format,
+                                  format=p_format, # 確保顯示為數字
                                   key="std_input_field")
         st.session_state.std_val = std_raw
         std_g = convert_to_g(std_raw, display_unit)
@@ -137,7 +140,7 @@ else:
     else:
         st.error(f"❌ **安全狀態：不合規**")
 
-# 指標卡
+# 指標卡 (會使用 smart_format 呈現數字)
 c1, c2, c3 = st.columns(3)
 with c1:
     st.metric("機台理想最小秤重量", auto_unit_format(ideal_min_w))
