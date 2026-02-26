@@ -48,12 +48,12 @@ else:
         with st.expander(f"📥 量程 {i+1} 測試參數輸入", expanded=True):
             col_a, col_b, col_c = st.columns(3)
             with col_a:
-                d_g = st.number_input(f"可讀數 d (g) - 量程 {i+1}", value=0.0001, format="%.5f", key=f"d_{i}")
-                snw_g = st.number_input(f"客戶預期最小淨重 (g) - 量程 {i+1}", value=0.02, format="%.4f", key=f"snw_{i}")
+                d_g = st.number_input(f"可讀數 d (g) - 量程 {i+1}", value=0.0001, format="%.7f", key=f"d_{i}")
+                snw_g = st.number_input(f"客戶預期最小淨重 (g) - 量程 {i+1}", value=0.02, format="%.7f", key=f"snw_{i}")
             with col_b:
-                rep_w_g = st.number_input(f"重複性測試砝碼重量 (g) - 量程 {i+1}", value=0.1, format="%.4f", key=f"rep_{i}")
+                rep_w_g = st.number_input(f"重複性測試砝碼重量 (g) - 量程 {i+1}", value=0.1, format="%.7f", key=f"rep_{i}")
             with col_c:
-                acc_w_g = st.number_input(f"準確度測試砝碼重量 (g) - 量程 {i+1}", value=200.0, format="%.4f", key=f"acc_{i}")
+                acc_w_g = st.number_input(f"準確度測試砝碼重量 (g) - 量程 {i+1}", value=200.0, format="%.7f", key=f"acc_{i}")
             
             # 將輸入存入清單供後續計算
             range_data.append({
