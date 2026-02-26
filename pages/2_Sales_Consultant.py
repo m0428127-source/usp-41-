@@ -22,7 +22,7 @@ def convert_from_g(value, unit):
 
 # --- 2. 網頁配置 ---
 st.set_page_config(page_title="USP <41> 合規評估", layout="centered")
-st.title("⚖️ USP 天平合規快速評估")
+st.title("⚖️ UPS>41>天平評估")
 st.caption("依據標準：USP-NF 〈41〉 & 〈1251〉 (Official Feb 1, 2026)")
 
 # --- 3. 初始化 Session State ---
