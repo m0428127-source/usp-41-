@@ -1,10 +1,19 @@
 import streamlit as st
 
-# --- 工具函數：單位自動轉換 ---
-def format_weight(g_value):
+# --- 工具函數：智慧格式化 (支援高精度且自動去零) ---
+def smart_format(value):
+    """將數值轉換為字串，自動去掉末尾無意義的 0，支援極小值顯示"""
+    if value == 0:
+        return "0"
+    # 使用 Python 的 format 函數，最高支援到小數點後 7 位
+    # 'g' 格式會自動處理有效位數並移除末尾的 0
+    return f"{value:.7g}".rstrip('0').rstrip('.') if '.' in f"{value:.7g}" else f"{value:.7g}"
+
+def format_weight_with_unit(g_value):
+    """判斷單位並格式化顯示"""
     if g_value < 1.0:
-        return f"{g_value * 1000:.2f} mg"
-    return f"{g_value:.4f} g"
+        return f"{smart_format(g_value * 1000)} mg"
+    return f"{smart_format(g_value)} g"
 
 # 設定網頁標題與風格
 st.set_page_config(page_title="USP <41> & <1251> 專業合規工作站", layout="wide")
@@ -14,7 +23,7 @@ st.caption("依據標準：USP-NF 〈41〉 & 〈1251〉 (Official Feb 1, 2026)")
 # --- 側邊欄：1. 檢查前作為 (Pre-check) ---
 with st.sidebar:
     st.header("🔍 1. 檢查前作為 (Pre-check)")
-    st.markdown("依據 USP 〈1251〉 規範，請先確認環境與設備狀態：")
+    st.markdown("依據 USP 〈1251〉 規範，請確認環境與設備狀態：")
     
     env_surface = st.checkbox("水平且非磁性的穩固表面 (Level & Nonmagnetic)")
     env_location = st.checkbox("遠離氣流、門窗、震動源與熱源")
@@ -28,15 +37,15 @@ with st.sidebar:
 
     st.divider()
     st.header("📋 2. 天平基本規格")
-    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU_多量程 (Multiple range)"])
-    max_cap_g = st.number_input("天平最大秤重量 Max Capacity (g)", value=220)
+    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU多量程 (Multiple range)"])
+    # 移除固定格式，改用 step 控制精度
+    max_cap_g = st.number_input("天平最大秤重量 Max Capacity (g)", value=220.0, step=0.0000001)
     is_manufacturing = st.checkbox("用於製造用途 (Manufacturing)?")
 
 # --- 主頁面邏輯 ---
 if is_manufacturing:
     st.error("🚨 **法規邊界提醒**：USP 〈41〉 範圍不涵蓋「製造用」天平。請確認用途是否為分析流程。")
 else:
-    # 根據天平類型動態生成輸入區
     ranges_to_test = 1
     if balance_type == "DU多量程 (Multiple range)":
         ranges_to_test = st.number_input("預計使用的量程數量", min_value=1, max_value=3, value=1)
@@ -48,13 +57,14 @@ else:
         with st.expander(f"📥 量程 {i+1} 測試參數輸入", expanded=True):
             col_a, col_b, col_c = st.columns(3)
             with col_a:
-                d_g = st.number_input(f"實際分度值 d (g) - 量程 {i+1}", value=0.0001, format="%.7f", key=f"d_{i}")
-                user_snw_g = st.number_input(f"客戶預期最小淨重 (g) - 量程 {i+1}", value=0.02, format="%.7f", key=f"snw_{i}")
+                # 設定 step 為 0.0000001 以支援到小數點後 7 位，且不設定 format 強制補 0
+                d_g = st.number_input(f"實際分度值 d (g) - 量程 {i+1}", value=0.0001, step=0.0000001, format="%.7f", key=f"d_{i}")
+                user_snw_g = st.number_input(f"客戶預期最小淨重 (g) - 量程 {i+1}", value=0.02, step=0.0000001, format="%.7f", key=f"snw_{i}")
             with col_b:
-                std_g = st.number_input(f"重複性實際量測標準差 STD (g) - 量程 {i+1}", value=0.00008, format="%.7f", key=f"std_{i}")
-                rep_w_g = st.number_input(f"重複性測試砝碼重量 (g) - 量程 {i+1}", value=0.1, format="%.7f", key=f"rep_{i}")
+                std_g = st.number_input(f"重複性實際量測標準差 STD (g) - 量程 {i+1}", value=0.00008, step=0.0000001, format="%.7f", key=f"std_{i}")
+                rep_w_g = st.number_input(f"重複性測試砝碼重量 (g) - 量程 {i+1}", value=0.1, step=0.0000001, format="%.7f", key=f"rep_{i}")
             with col_c:
-                acc_w_g = st.number_input(f"準確度測試砝碼重量 (g) - 量程 {i+1}", value=200.0, format="%.7f", key=f"acc_{i}")
+                acc_w_g = st.number_input(f"準確度測試砝碼重量 (g) - 量程 {i+1}", value=200.0, step=0.0000001, format="%.7f", key=f"acc_{i}")
             
             range_data.append({
                 "d": d_g, 
@@ -78,25 +88,24 @@ else:
             ideal_snw_g = 2000 * 0.41 * data['d']
             
             # B. 最小秤重量 (Minimum Weight) -> 依據實測 STD 判定
-            # 遵守邏輯：若實測 std < 0.41d，計算基準取 0.41d
             calculation_base = max(data['std'], 0.41 * data['d'])
             actual_min_weight_g = 2000 * calculation_base
 
-            st.markdown(f"### 📍 量程 {idx+1} 診斷結果 (d = {data['d']:.7f} g)")
+            st.markdown(f"### 📍 量程 {idx+1} 診斷結果 (d = {smart_format(data['d'])} g)")
             
             # --- 雙欄報告 ---
             diag_col1, diag_col2 = st.columns(2)
             with diag_col1:
                 st.info("#### 1. 重複性測試 (Repeatability)")
                 st.markdown(f"""
-                * **砝碼合規區間**：`{format_weight(rep_min_g)}` ~ `{format_weight(rep_max_g)}`
-                * **擬用砝碼**：`{format_weight(data['rep_w'])}` {"✅" if rep_min_g <= data['rep_w'] <= rep_max_g else "❌"}
+                * **砝碼合規區間**：`{format_weight_with_unit(rep_min_g)}` ~ `{format_weight_with_unit(rep_max_g)}`
+                * **擬用砝碼**：`{format_weight_with_unit(data['rep_w'])}` {"✅" if rep_min_g <= data['rep_w'] <= rep_max_g else "❌"}
                 """)
             with diag_col2:
                 st.info("#### 2. 準確度測試 (Accuracy)")
                 st.markdown(f"""
-                * **砝碼合規區間**：`{format_weight(acc_min_g)}` ~ `{format_weight(acc_max_g)}`
-                * **擬用砝碼**：`{format_weight(data['acc_w'])}` {"✅" if acc_min_g <= data['acc_w'] <= acc_max_g else "❌"}
+                * **砝碼合規區間**：`{format_weight_with_unit(acc_min_g)}` ~ `{format_weight_with_unit(acc_max_g)}`
+                * **擬用砝碼**：`{format_weight_with_unit(data['acc_w'])}` {"✅" if acc_min_g <= data['acc_w'] <= acc_max_g else "❌"}
                 """)
 
             # --- 關鍵重量判定區 ---
@@ -104,19 +113,18 @@ else:
             res_c1, res_c2, res_c3 = st.columns(3)
             
             with res_c1:
-                st.metric("最小淨重量 (理想狀態)", format_weight(ideal_snw_g))
-                st.caption("公式: $2000 \\times 0.41 \\times d$")
+                st.metric("最小淨重量 (理想狀態)", format_weight_with_unit(ideal_snw_g))
+                st.caption(f"公式: $2000 \\times 0.41 \\times {smart_format(data['d'])}$")
                 
             with res_c2:
-                st.metric("最小秤重量 (實測合規)", format_weight(actual_min_weight_g))
-                st.caption(f"基準值: {calculation_base:.7f} g")
+                st.metric("最小秤重量 (實測合規)", format_weight_with_unit(actual_min_weight_g))
+                st.caption(f"基準值: {smart_format(calculation_base)} g")
                 
             with res_c3:
-                # 最終合規判定：客戶預期淨重 vs 實際最小秤重量
                 if data['user_snw'] < actual_min_weight_g:
-                    st.error(f"❌ **判定：不符合需求**\n\n客戶需求 ({format_weight(data['user_snw'])}) 低於實測最小秤重量。")
+                    st.error(f"❌ **判定：不符合需求**\n\n客戶需求 ({format_weight_with_unit(data['user_snw'])}) 低於實測最小秤重量。")
                 elif data['user_snw'] < actual_min_weight_g * 2:
-                    st.warning(f"⚠️ **判定：建議增加安全係數**\n\n符合法規，但建議設為 {format_weight(actual_min_weight_g * 2)} (SF=2)。")
+                    st.warning(f"⚠️ **判定：建議增加安全係數**\n\n符合法規，但建議設為 {format_weight_with_unit(actual_min_weight_g * 2)} (SF=2)。")
                 else:
                     st.success(f"✅ **判定：符合秤量需求**\n\n天平表現優於客戶需求。")
             
@@ -124,10 +132,9 @@ else:
 
 # --- 底部法規導引 ---
 st.subheader("📑 工程師筆記")
-with st.expander("名詞定義與邏輯說明 (依據 USP <41> & <1251>)"):
-    st.markdown("""
-    * **最小淨重量 (Smallest Net Weight)**：指該天平在解析度 $d$ 限制下的理論最優秤量能力。
-    * **最小秤重量 (Minimum Weight)**：依據實際環境下的重複性測試（標準差 $s$）計算而得。根據 USP 〈41〉，若實測 $s < 0.41d$，則必須以 $0.41d$ 計算。
-    * **判定標準**：客戶的日常最小秤量行為（淨重），必須大於等於「最小秤重量」。
-    * **安全係數 (Safety Factor)**：USP 〈1251〉 建議為了抵禦日常操作波動，最小秤量應保留 2 倍的裕度。
+with st.expander("名詞定義與邏輯說明"):
+    st.markdown(f"""
+    * **最小淨重量 (Smallest Net Weight)**：基於天平分度值 $d$ 的理論極限。
+    * **最小秤重量 (Minimum Weight)**：基於重複性實測標準差 $s$。若 $s < 0.41d$，則以 $0.41d$ 代替。
+    * **判定標準**：日常秤量之淨重（Net Weight）必須 $\ge$ 最小秤重量。
     """)
