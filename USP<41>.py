@@ -95,10 +95,9 @@ with st.expander("📄 查看詳細法規判斷依據 (USP <41>)"):
     acc_w_raw = st.number_input("準確度測試砝碼重", value=snw_raw * 10)
     acc_w_g = convert_to_g(acc_w_raw, display_unit)
     mpe_limit = acc_w_g * (0.05 / 100 / 3)
-    
     st.markdown(f"""
     * **重複性判定標準**：$2 \\times s / m_{{目標}} \\le 0.10\\%$
-    * **標準差修正**：若實測 $s < {auto_unit_format(s_threshold_g)}$，則採 $\{auto_unit_format(s_threshold_g)}\}$ 計算。
+    * **標準差修正**：若實測 $s < {auto_unit_format(s_threshold_g)}$，則採 ${auto_unit_format(s_threshold_g)}$ 計算。
     * **準確度建議**：砝碼不確定度 $U$ 應 $\le {auto_unit_format(mpe_limit)}$。
     """)
     if st.button("生成專業評估摘要", use_container_width=True):
