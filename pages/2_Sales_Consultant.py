@@ -59,16 +59,16 @@ with col2:
     has_std = st.radio("評估模式", ["手動輸入實測 Std", "無數據 (理論預估)"])
 
 # 可讀數清單
-d_base_options = [1.0, 0.5, 0.2, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
+d_base_options = [1.0, 0.5, 0.2, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001,0.0000001]
 d_converted = [float(convert_from_g(x, display_unit)) for x in d_base_options]
 
 if balance_type in ["DR_多區間", "DU_多量程"]:
     c1, c2 = st.columns(2)
     with c1: 
-        d1_val = st.select_slider(f"d1 (精細) ({display_unit})", options=d_converted, value=d_converted[5], format_func=smart_format)
+        d1_val = st.select_slider(f"d1 (精細量程) ({display_unit})", options=d_converted, value=d_converted[5], format_func=smart_format)
         d1_g = convert_to_g(d1_val, display_unit)
     with c2: 
-        d2_val = st.select_slider(f"d2 (寬鬆) ({display_unit})", options=d_converted, value=d_converted[4], format_func=smart_format)
+        d2_val = st.select_slider(f"d2 (粗量程) ({display_unit})", options=d_converted, value=d_converted[4], format_func=smart_format)
         d2_g = convert_to_g(d2_val, display_unit)
     active_d_g = d1_g
 else:
