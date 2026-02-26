@@ -42,7 +42,7 @@ with st.sidebar:
     st.checkbox("天平放置於穩固、水平檯面")
     st.checkbox("環境受控，且遠離直接氣流")
 
-st.markdown("### 📋 1️⃣ 設定規格與需求")
+st.markdown("### 1️⃣ 設定規格與需求")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -72,7 +72,7 @@ if active_d_g != st.session_state.last_d:
     st.session_state.last_d = active_d_g
 
 st.markdown("---")
-st.markdown("### 📥 2️⃣ 數據輸入與模式")
+st.markdown("### 2️⃣ 數據輸入與模式")
 
 col_snw, col_std = st.columns(2)
 with col_snw:
@@ -112,7 +112,7 @@ current_sf = snw_g / usp_min_w if (snw_g is not None and usp_min_w > 0) else 0
 
 # --- 6. 專業結論面板 ---
 st.divider()
-st.markdown("### 🏁 3️⃣ 評估結論")
+st.markdown("### 3️⃣ 評估結論")
 
 if is_snw_unknown:
     st.info("💡 目前已計算出機台最小秤量門檻。")
@@ -146,7 +146,7 @@ else:
 
 # --- 7. 報告摘要 ---
 st.divider()
-st.markdown("### 📄 4️⃣ 專業評估報告摘要")
+st.markdown("### 4️⃣ 專業評估報告摘要")
 
 if is_snw_unknown:
     sf_text, snw_text, result_text, detail_note = "待定", "待定", "待定", "尚未輸入淨重數據"
