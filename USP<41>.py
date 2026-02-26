@@ -108,8 +108,9 @@ else:
                 if not (max_cap_g * 0.05 <= acc_w_g <= max_cap_g):
                     st.error(f"⚠️ 砝碼不符 USP 規範！建議: {smart_format(convert_from_g(max_cap_g * 0.05, display_unit))} ~ {smart_format(convert_from_g(max_cap_g, display_unit))} {display_unit}")
             
-            range_data.append({"d": convert_to_g(d1_raw, display_unit), "std": convert_to_g(std1_raw, display_unit), "snw": convert_to_g(snw1_raw, display_unit), "rep_w": rep_w_g, "acc_w": acc_w_g})
-            range_data.append({"d": convert_to_g(d2_raw, display_unit), "std": convert_to_g(std2_raw, display_unit), "snw": convert_to_g(snw2_raw, display_unit), "rep_w": rep_w_g, "acc_w": acc_w_g})
+            # 確保存入時標記量程名稱，方便診斷迴圈調用
+            range_data.append({"d": convert_to_g(d1_raw, display_unit), "std": convert_to_g(std1_raw, display_unit), "snw": convert_to_g(snw1_raw, display_unit), "rep_w": rep_w_g, "acc_w": acc_w_g, "label": "量程 1"})
+            range_data.append({"d": convert_to_g(d2_raw, display_unit), "std": convert_to_g(std2_raw, display_unit), "snw": convert_to_g(snw2_raw, display_unit), "rep_w": rep_w_g, "acc_w": acc_w_g, "label": "量程 2"})
         
         else:
             with col_a:
@@ -127,13 +128,14 @@ else:
                 if not (max_cap_g * 0.05 <= acc_w_g <= max_cap_g):
                     st.error(f"⚠️ 砝碼不符 USP 規範！(應在 {smart_format(convert_from_g(max_cap_g * 0.05, display_unit))} ~ {smart_format(convert_from_g(max_cap_g, display_unit))} {display_unit} 之間)")
             
-            range_data.append({"d": convert_to_g(d_raw, display_unit), "std": convert_to_g(std_raw, display_unit), "snw": convert_to_g(snw_raw, display_unit), "rep_w": rep_w_g, "acc_w": acc_w_g})
+            range_data.append({"d": convert_to_g(d_raw, display_unit), "std": convert_to_g(std_raw, display_unit), "snw": convert_to_g(snw_raw, display_unit), "rep_w": rep_w_g, "acc_w": acc_w_g, "label": "量程"})
 
     # --- 執行診斷按鈕 ---
     if st.button("🚀 執行全面合規性診斷"):
         st.subheader("🏁 USP 〈41〉 設備適宜性診斷報告")
         
         for idx, data in enumerate(range_data):
+            # 核心邏輯修正：計算該量程專屬的限制與最小秤重
             s_threshold_g = 0.41 * data['d']
             rep_min_g, rep_max_g = 0.1000, max_cap_g * 0.05
             acc_min_g, acc_max_g = max_cap_g * 0.05, max_cap_g
@@ -141,17 +143,19 @@ else:
             ideal_snw_g = 2000 * 0.41 * data['d']
             calculation_base = max(data['std'], 0.41 * data['d'])
             actual_min_weight_g = 2000 * calculation_base
+            
+            # 【關鍵點修正】安全係數 (SF) 計算現在嚴格對應該量程自己的 snw 與實際最小秤重
             safety_factor = data['snw'] / actual_min_weight_g if actual_min_weight_g > 0 else 0
 
-            # 保持您的標題文字，但 d 的數值加上智慧轉換
-            st.markdown(f"### 📍 量程 {idx+1} 診斷結果 (d = {auto_unit_format(data['d'])})")
+            # 保持您的標題文字設計
+            current_label = data.get('label', f"量程 {idx+1}")
+            st.markdown(f"### 📍 {current_label} 診斷結果 (d = {auto_unit_format(data['d'])})")
             
             diag_col1, diag_col2 = st.columns(2)
 
             with diag_col1:
                 st.info("#### 1. 重複性測試要求 (Repeatability)")
                 is_rep_ok = rep_min_g <= data['rep_w'] <= rep_max_g
-                # 保持法規文字設計，僅替換數值顯示
                 st.markdown(f"""
                 **【法規規格要求】**
                 * **砝碼區間**：`{auto_unit_format(rep_min_g)}` ~ `{auto_unit_format(rep_max_g)}`
@@ -159,7 +163,6 @@ else:
                 * **關鍵限制**：若 $s < {auto_unit_format(s_threshold_g)}$ ($0.41d$)，計算時需以該值取代。
                 """)
                 status_rep_text = "✅ 符合規範" if is_rep_ok else "❌ 規格不符"
-                # 保持對比判斷文字
                 if is_rep_ok:
                     st.success(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{auto_unit_format(data['rep_w'])}` ({status_rep_text})")
                 else:
@@ -185,17 +188,16 @@ else:
 
             st.markdown(f"#### 🛡️ 關鍵秤量能力判定")
             res_c1, res_c2, res_c3, res_c4 = st.columns(4)
-            # 數值顯示端全部改用 auto_unit_format 以獲得最佳單位呈現
             res_c1.metric("最小淨重量 (理想)", auto_unit_format(ideal_snw_g))
             res_c2.metric("最小秤重量 (實際)", auto_unit_format(actual_min_weight_g))
             res_c3.metric("客戶預期最小淨重量", auto_unit_format(data['snw']))
             res_c4.metric("安全係數 (SF)", f"{safety_factor:.2f}")
 
-            # 保持最終判定文字設計
+            # 保持最終判定文字與邏輯，確保對應正確的 label 與數據
             if data['snw'] >= actual_min_weight_g:
-                st.success(f"✅ **量程 {idx+1} 判定：符合秤量需求** (預期 {auto_unit_format(data['snw'])} $\ge$ 實際 {auto_unit_format(actual_min_weight_g)})")
+                st.success(f"✅ **{current_label} 判定：符合秤量需求** (預期 {auto_unit_format(data['snw'])} $\ge$ 實際 {auto_unit_format(actual_min_weight_g)})")
             else:
-                st.error(f"❌ **量程 {idx+1} 判定：不符合需求** (預期 {auto_unit_format(data['snw'])} < 實際 {auto_unit_format(actual_min_weight_g)})")
+                st.error(f"❌ **{current_label} 判定：不符合需求** (預期 {auto_unit_format(data['snw'])} < 實際 {auto_unit_format(actual_min_weight_g)})")
             
             st.divider()
 
