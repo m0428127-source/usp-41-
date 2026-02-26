@@ -2,8 +2,9 @@ import streamlit as st
 
 # --- 1. 工具函數 ---
 def format_dynamic(value):
-    """ 強制動態修剪位數，去掉末尾無意義的 0 """
+    """ 強制動態修剪位數，去掉末尾無意義的 0，且確保不進位 """
     if value is None or value == 0: return "0"
+    # 使用 .7f 展開確保抓到 0.99 這種位數，然後去掉右側 0
     formatted = f"{value:.7f}".rstrip('0').rstrip('.')
     return formatted if formatted != "" else "0"
 
@@ -27,11 +28,11 @@ st.set_page_config(page_title="USP <41> 專業合規評估", layout="centered")
 st.title("⚖️ USP 天平合規快速評估")
 st.caption("工程師實測 / 業務快速提案 專業工具版 (2026 Edition)")
 
-# --- 3. 初始化 Session State (這是防止數值被覆蓋的關鍵) ---
+# --- 3. 初始化 Session State ---
 if 'snw_val' not in st.session_state:
     st.session_state.snw_val = 0.02
 if 'std_val' not in st.session_state:
-    st.session_state.std_val = 0.00008  # 初始預設值
+    st.session_state.std_val = 0.00008
 if 'last_d' not in st.session_state:
     st.session_state.last_d = 0.0001
 
@@ -70,29 +71,26 @@ else:
     active_d_g = convert_to_g(d_val, display_unit)
     d1_g = active_d_g
 
-# --- 邏輯修正點：檢查是否要聯動 ---
-# 只有當用戶是第一次進來，或是他完全沒改過 Std 時，我們才跟隨 d 變動。
-# 這裡我們設定：如果 d 變了，我們僅提供建議，但不強制覆蓋已輸入的 session_state (除非原本是空的)
+# 防止分度值滑動時覆蓋用戶輸入
 if active_d_g != st.session_state.last_d:
-    # 這裡可以決定是否要隨 d 聯動。如果您希望「完全不被改動」，就把下面這行註解掉
-    # st.session_state.std_val = float(convert_from_g(active_d_g * 0.8, display_unit)) 
     st.session_state.last_d = active_d_g
 
 st.markdown("---")
-# --- 數據輸入區與防呆 ---
+# --- 數據輸入區 ---
 col_snw, col_std = st.columns(2)
 
 with col_snw:
     is_snw_unknown = st.checkbox("尚未決定最小淨重量")
     if not is_snw_unknown:
-        # 使用 Session State 作為 value，並透過 key 自動鎖定用戶輸入
+        # 注意：format="%.7f" 是為了讓 0.99 不被自動進位為 1
+        # 但因為我們在底下的顯示函數會 format_dynamic，所以使用者看到的結果會去零
         snw_raw = st.number_input(f"客戶設定最小淨重量 ({display_unit})", 
                                   min_value=0.0000001, 
                                   value=st.session_state.snw_val,
                                   step=0.0000001,
-                                  format=None, # 移除強制格式化以去零
+                                  format="%.7f", 
                                   key="snw_input_field")
-        st.session_state.snw_val = snw_raw # 更新存儲值
+        st.session_state.snw_val = snw_raw
         snw_g = convert_to_g(snw_raw, display_unit)
     else:
         snw_g = None
@@ -103,9 +101,9 @@ with col_std:
                                   min_value=0.0000001,
                                   value=st.session_state.std_val,
                                   step=0.0000001,
-                                  format=None, # 移除強制格式化以去零
+                                  format="%.7f",
                                   key="std_input_field")
-        st.session_state.std_val = std_raw # 更新存儲值
+        st.session_state.std_val = std_raw
         std_g = convert_to_g(std_raw, display_unit)
     else:
         st.info("ℹ️ 模式：機台理論極限預估")
@@ -126,35 +124,32 @@ st.divider()
 st.markdown("### 🏁 專業評估結論")
 
 if is_snw_unknown:
-    st.info("💡 目前已計算出機台最小秤量門檻。請取消勾選「尚未決定」並輸入數值以進行判定。")
+    st.info("💡 目前已計算出機台最小秤量門檻。")
 else:
     if current_sf >= user_sf:
         st.success(f"🛡️ **安全狀態：優良** | 當前實測 SF: **{current_sf:.2f}**")
     elif current_sf >= 1:
-        st.warning(f"⚠️ **安全狀態：高風險** | 已達法規底線，但低於安全係數目標。")
+        st.warning(f"⚠️ **安全狀態：高風險**")
     else:
-        st.error(f"❌ **安全狀態：不合規** | 客戶目標重量小於法規判定之最小秤量！")
+        st.error(f"❌ **安全狀態：不合規**")
 
-# 指標卡 (使用動態去零格式)
+# 指標卡 (這裡會套用去零邏輯)
 c1, c2, c3 = st.columns(3)
 with c1:
     st.metric("機台理想最小秤重量", auto_unit_format(ideal_min_w))
-    st.caption("基於 $0.41d$ 理論底線")
 with c2:
     st.metric("機台實際最小秤重量", auto_unit_format(usp_min_w))
-    st.caption("⚠️ 已修正" if is_corrected else "✅ 實測計算")
 with c3:
     if not is_snw_unknown:
         st.metric("客戶設定最小淨重量", auto_unit_format(snw_g), 
-                  delta=f"SF: {current_sf:.2f}" if current_sf else None, 
-                  delta_color="normal" if current_sf and current_sf >= 1 else "inverse")
-        st.caption("Smallest Net Weight")
+                  delta=f"SF: {current_sf:.2f}" if current_sf else None)
     else:
         st.metric("客戶設定最小淨重量", "待定")
 
 # --- 7. 報告摘要 ---
 st.divider()
 st.markdown("### 📄 專業評估報告摘要")
+
 if is_snw_unknown:
     sf_text, snw_text, result_text = "待定", "待定", "待定"
 else:
@@ -162,6 +157,7 @@ else:
     snw_text = auto_unit_format(snw_g)
     result_text = "✅ 符合法規" if current_sf >= 1 else "❌ 不符合法規"
 
+# 這裡生成的文字報告，Std 會顯示你輸入的 0.99，不會變 1
 copyable_report = f"""【USP 41 專業評估報告 - 2026 Edition】
 ------------------------------------------
 評估結果：{result_text}
@@ -172,6 +168,5 @@ copyable_report = f"""【USP 41 專業評估報告 - 2026 Edition】
 客戶設定最小淨重 (SNW): {snw_text}
 實際安全係數 (SF): {sf_text} (目標要求: {user_sf})
 ------------------------------------------
-※ 備註：依據 USP <41>，最小秤重量不應包含皮重容器。
 """
 st.code(copyable_report, language="text")
