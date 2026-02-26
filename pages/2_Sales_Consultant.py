@@ -100,14 +100,35 @@ else:
     st.error(f"### 🛡️ 當前安全係數 (SF): {current_real_sf:.2f} (不合規)")
     st.caption(f"❌ 低於 USP 法規底線。在此環境下，該天平無法滿足秤量需求。")
 
-# 三位一體對比指標卡
+# 三位一體對比指標卡 (修正版)
 st.markdown("#### 📊 性能對比")
 c1, c2, c3 = st.columns(3)
-c1.metric("機台理論極限 (SF=1)", auto_unit_format(2000 * s_threshold_g))
-c2.metric(f"要求的門檻 (SF={user_sf})", auto_unit_format(usp_min_weight_g * user_sf), 
-          delta=f"{user_sf}x 放大", delta_color="normal")
-c3.metric("客戶目標淨重", auto_unit_format(snw_g))
 
+# 1. 機台理論極限：基於 d 的物理極限
+c1.metric(
+    label=f"理論極限最小秤重 (d={auto_unit_format(active_d_g)}, SF=1)", 
+    value=auto_unit_format(2000 * s_threshold_g),
+    help="這是天平在完全理想、無震動環境下的極限能力 (0.41d * 2000)。"
+)
+
+# 2. 實際最小秤重：基於現場 STD
+c2.metric(
+    label="實際最小秤重 (基於現場標準差)", 
+    value=auto_unit_format(usp_min_weight_g),
+    delta=f"環境影響: {(usp_min_weight_g / (2000 * s_threshold_g)):.1f}x",
+    delta_color="inverse",
+    help="這是根據您現場實測的標準差算出的最小秤重門檻。若數值遠大於理論極限，代表環境干擾嚴重。"
+)
+
+# 3. 客戶目標秤重
+c3.metric(
+    label="客戶目標秤重", 
+    value=auto_unit_format(snw_g),
+    help="客戶預計在現場秤量的最輕樣品重量。"
+)
+
+# 加強版：要求的門檻（含安全係數）
+st.info(f"💡 若要滿足您設定的安全係數 **SF={user_sf}**，最小秤重樣品建議需大於：**{auto_unit_format(usp_min_weight_g * user_sf)}**")
 # --- 7. 專業背書區 ---
 with st.expander("📄 查看詳細法規判斷依據 (USP <41>)"):
     st.markdown(f"""
