@@ -146,7 +146,7 @@ else:
 
 # --- 7. 報告摘要 ---
 st.divider()
-st.markdown("### 4️⃣ 專業評估報告摘要")
+st.markdown("### 4️⃣ 評估報告摘要")
 
 if is_snw_unknown:
     sf_text, snw_text, result_text, detail_note = "待定", "待定", "待定", "尚未輸入淨重數據"
@@ -164,7 +164,7 @@ else:
         detail_note = f"實際 SF ({sf_text}) < 1，未達到 USP <41> 規定的最小秤量門檻。"
 
 d2_report_line = f"理論最小秤量極限 (d2: 0.41d2): {auto_unit_format(ideal_min_w_d2)}\n" if d2_g else ""
-copyable_report = f"""【USP 41 專業評估報告 - 2026 Edition】
+copyable_report = f"""【USP 41 評估報告 - 2026 Edition】
 ------------------------------------------
 評估狀態：{result_text}
 判定說明：{detail_note}
