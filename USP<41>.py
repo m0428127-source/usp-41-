@@ -44,7 +44,6 @@ with st.sidebar:
 if is_manufacturing:
     st.error("🚨 **法規邊界提醒**：USP 〈41〉 的範圍不涵蓋「製造用」天平。請確認您的用途是否為分析流程。")
 else:
-    # 數據準備清單
     range_data = []
 
     # --- 數據輸入區 ---
@@ -58,20 +57,16 @@ else:
                 snw1 = st.number_input("客戶預期最小淨重 (g) - 量程 1", value=0.02, step=0.0000001, format="%.7f")
                 snw2 = st.number_input("客戶預期最小淨重 (g) - 量程 2", value=0.2, step=0.0000001, format="%.7f")
             with col_b:
-                rep_w = st.number_input("重複性測試砝碼重量 (g) (共用)", value=0.1, step=0.0000001, format="%.7f")
                 std1 = st.number_input("實際量測標準差 STD1 (g) - 量程 1", value=0.000008, step=0.0000001, format="%.7f")
                 std2 = st.number_input("實際量測標準差 STD2 (g) - 量程 2", value=0.00008, step=0.0000001, format="%.7f")
-
+                rep_w = st.number_input("重複性測試砝碼重量 (g) (共用)", value=0.1, step=0.0000001, format="%.7f")
             with col_c:
                 acc_w = st.number_input("準確度測試砝碼重量 (g) (共用)", value=200.0, step=0.0000001, format="%.7f")
             
             # 分配兩組數據，但共用砝碼
             range_data.append({"d": d1, "std": std1, "snw": snw1, "rep_w": rep_w, "acc_w": acc_w})
             range_data.append({"d": d2, "std": std2, "snw": snw2, "rep_w": rep_w, "acc_w": acc_w})
-            st.info("💡 **多量程提醒**：Range 2 測試通常需先放置皮重或預載物進入較粗量程。")
-
         else:
-            # 單一量程或多區間
             with col_a:
                 d_g = st.number_input("實際分度值 d (g)", value=0.0001, step=0.0000001, format="%.7f")
                 snw_g = st.number_input("客戶預期最小淨重 (g)", value=0.02, step=0.0000001, format="%.7f")
@@ -88,7 +83,7 @@ else:
         st.subheader("🏁 USP 〈41〉 設備適宜性診斷報告")
         
         for idx, data in enumerate(range_data):
-            # --- 法規常數與計算 ---
+            # --- 計算邏輯 ---
             s_threshold_g = 0.41 * data['d']
             rep_min_g, rep_max_g = 0.1000, max_cap_g * 0.05
             acc_min_g, acc_max_g = max_cap_g * 0.05, max_cap_g
@@ -100,7 +95,7 @@ else:
 
             st.markdown(f"### 📍 量程 {idx+1} 診斷結果 (d = {smart_format(data['d'])} g)")
             
-            # --- 雙欄對照報告 (保留原始設計) ---
+            # --- 雙欄報告 ---
             diag_col1, diag_col2 = st.columns(2)
 
             with diag_col1:
@@ -113,7 +108,11 @@ else:
                 * **關鍵限制**：若 $s < {smart_format(s_threshold_g * 1000)} \\text{{ mg}}$ ($0.41d$)，計算時需以該值取代。
                 """)
                 status_rep_text = "✅ 符合規範" if is_rep_ok else "❌ 規格不符"
-                st.success(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{format_weight_with_unit(data['rep_w'])}` ({status_rep_text})") if is_rep_ok else st.error(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{format_weight_with_unit(data['rep_w'])}` ({status_rep_text})")
+                # 修正處：改用標準 if 語法避免回傳 DeltaGenerator 物件
+                if is_rep_ok:
+                    st.success(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{format_weight_with_unit(data['rep_w'])}` ({status_rep_text})")
+                else:
+                    st.error(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{format_weight_with_unit(data['rep_w'])}` ({status_rep_text})")
 
             with diag_col2:
                 st.info("#### 2. 準確度測試要求 (Accuracy)")
@@ -127,39 +126,36 @@ else:
                 * **砝碼限制**：$MPE$ 或 $U$ 需小於 **{mpe_limit_ratio*100:.4f}\\%** (即 0.05% 的 1/3)。
                 """)
                 status_acc_text = "✅ 符合規範" if is_acc_ok else "❌ 規格不符"
-                st.success(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{format_weight_with_unit(data['acc_w'])}` ({status_acc_text})") if is_acc_ok else st.error(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{format_weight_with_unit(data['acc_w'])}` ({status_acc_text})")
+                # 修正處：改用標準 if 語法
+                if is_acc_ok:
+                    st.success(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{format_weight_with_unit(data['acc_w'])}` ({status_acc_text})")
+                else:
+                    st.error(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{format_weight_with_unit(data['acc_w'])}` ({status_acc_text})")
                 st.caption(f"💡 砝碼證書擴展不確定度 $U$ 須 $\le {smart_format(mpe_absolute_g)} \\text{{ g}}$")
 
-            # --- 關鍵秤量能力判定 ---
+            # --- 關鍵能力判定 ---
             st.markdown(f"#### 🛡️ 關鍵秤量能力判定")
             res_c1, res_c2, res_c3, res_c4 = st.columns(4)
-            
             with res_c1:
-                st.metric("最小淨重量 (理想狀態)", format_weight_with_unit(ideal_snw_g))
-                st.caption("公式: $2000 \\times 0.41 \\times d$")
+                st.metric("最小淨重量 (理想)", format_weight_with_unit(ideal_snw_g))
             with res_c2:
-                st.metric("最小秤重量 (實測合規)", format_weight_with_unit(actual_min_weight_g))
-                st.caption(f"基準值: {smart_format(calculation_base)} g")
+                st.metric("最小秤重量 (實際)", format_weight_with_unit(actual_min_weight_g))
             with res_c3:
                 st.metric("客戶預期最小淨重量", format_weight_with_unit(data['snw']))
-                st.caption(f"量程 {idx+1} 目標值")
             with res_c4:
                 st.metric("安全係數 (SF)", f"{safety_factor:.2f}")
-                st.caption("預期 / 實際 (SF需 ≥ 1)")
 
-            # --- 最終判定 ---
             if data['snw'] >= actual_min_weight_g:
-                st.success(f"✅ **量程 {idx+1} 判定：符合秤量需求**\n\n客戶預期 ({smart_format(data['snw'])} g) $\ge$ 實際表現 ({smart_format(actual_min_weight_g)} g)")
+                st.success(f"✅ **量程 {idx+1} 判定：符合秤量需求** (預期 {smart_format(data['snw'])} g $\ge$ 實際 {smart_format(actual_min_weight_g)} g)")
             else:
-                st.error(f"❌ **量程 {idx+1} 判定：不符合需求**\n\n客戶預期 ({smart_format(data['snw'])} g) < 實際表現 ({smart_format(actual_min_weight_g)} g)")
+                st.error(f"❌ **量程 {idx+1} 判定：不符合需求** (預期 {smart_format(data['snw'])} g < 實際 {smart_format(actual_min_weight_g)} g)")
             
             st.divider()
 
-# --- 底部法規導引 ---
-st.subheader("📑 工程師溝通指南 (Professional Guidance)")
-with st.expander("為什麼要這樣測？ (法律依據參考)"):
+# --- 底部說明 ---
+st.subheader("📑 專業評估指南")
+with st.expander("名詞解釋"):
     st.markdown("""
-    * **多量程 (Multiple Range)**：USP 〈41〉 規定必須在每個使用的量程執行測試。為了進入較粗量程，需先在秤盤放置皮重（Tare）。
-    * **關於標準差 (s)**：若實測 $s < 0.41d$，則須以 $0.41d$ 代替計算最小重量。
-    * **安全係數 (Safety Factor)**：反映用戶秤量目標相對於法規底線的裕度。
+    * **DU多量程**：在同一個天平上有不同的解析度區段。量程 2 的測試通常需要預載皮重。
+    * **0.41d 規則**：USP <41> 規定當標準差 $s$ 過小時，必須以 $0.41d$ 作為計算基礎。
     """)
