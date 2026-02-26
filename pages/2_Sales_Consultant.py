@@ -58,7 +58,7 @@ with col1:
 with col2:
     has_std = st.radio("評估模式", ["手動輸入實測 Std", "無數據 (理論預估)"])
 
-# 分度值清單
+# 可讀數清單
 d_base_options = [1.0, 0.5, 0.2, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
 d_converted = [float(convert_from_g(x, display_unit)) for x in d_base_options]
 
@@ -72,7 +72,7 @@ if balance_type in ["DR_多區間", "DU_多量程"]:
         d2_g = convert_to_g(d2_val, display_unit)
     active_d_g = d1_g
 else:
-    d_val = st.select_slider(f"分度值 d ({display_unit})", options=d_converted, value=d_converted[4], format_func=smart_format)
+    d_val = st.select_slider(f"可讀數 d ({display_unit})", options=d_converted, value=d_converted[4], format_func=smart_format)
     active_d_g = convert_to_g(d_val, display_unit)
     d1_g = active_d_g
 
@@ -165,7 +165,7 @@ else:
 copyable_report = f"""【USP 41 專業評估報告 - 2026 Edition】
 ------------------------------------------
 評估結果：{result_text}
-天平分度值 (d): {auto_unit_format(d1_g)}
+天平可讀數 (d): {auto_unit_format(d1_g)}
 理論最小秤量極限 (0.41d): {auto_unit_format(ideal_min_w)}
 重複性實測標準差 (Std): {auto_unit_format(std_g) if std_g > 0 else "N/A"}
 判定最小秤重量 (MinW): {auto_unit_format(usp_min_w)}
