@@ -57,9 +57,9 @@ else:
                 snw1 = st.number_input("客戶預期最小淨重 (g) - 量程 1", value=0.02, step=0.0000001, format="%.7f")
                 snw2 = st.number_input("客戶預期最小淨重 (g) - 量程 2", value=0.2, step=0.0000001, format="%.7f")
             with col_b:
+                rep_w = st.number_input("重複性測試砝碼重量 (g) (共用)", value=0.1, step=0.0000001, format="%.7f")
                 std1 = st.number_input("實際量測標準差 STD1 (g) - 量程 1", value=0.000008, step=0.0000001, format="%.7f")
                 std2 = st.number_input("實際量測標準差 STD2 (g) - 量程 2", value=0.00008, step=0.0000001, format="%.7f")
-                rep_w = st.number_input("重複性測試砝碼重量 (g) (共用)", value=0.1, step=0.0000001, format="%.7f")
             with col_c:
                 acc_w = st.number_input("準確度測試砝碼重量 (g) (共用)", value=200.0, step=0.0000001, format="%.7f")
             
