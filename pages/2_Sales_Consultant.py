@@ -21,7 +21,7 @@ def convert_from_g(value, unit):
     return value
 
 # --- 2. 網頁配置 ---
-st.set_page_config(page_title="USP <41> 專業合規評估", layout="centered")
+st.set_page_config(page_title="USP <41> 合規評估", layout="centered")
 st.title("⚖️ USP 天平合規快速評估")
 st.caption("依據標準：USP-NF 〈41〉 & 〈1251〉 (Official Feb 1, 2026)")
 
@@ -110,7 +110,7 @@ current_sf = snw_g / usp_min_w if (snw_g is not None and usp_min_w > 0) else 0
 
 # --- 6. 專業結論面板 (方案三：強化版) ---
 st.divider()
-st.markdown("### 🏁 專業評估結論")
+st.markdown("### 2️⃣ 評估結論")
 
 if is_snw_unknown:
     st.info("💡 目前已計算出機台最小秤量門檻。")
