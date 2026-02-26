@@ -146,8 +146,8 @@ if d2_g:
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1: st.metric("d1 理論最小秤重量", auto_unit_format(ideal_min_w_d1))
     with m_col2: st.metric("d2 理論最小秤重量", auto_unit_format(ideal_min_w_d2))
-    with m_col3: st.metric("實際判定 MinW", auto_unit_format(usp_min_w), delta="法規修正" if is_corrected else None, delta_color="inverse")
-    with m_col4: st.metric("設定 SNW", auto_unit_format(snw_g) if snw_g else "待定")
+    with m_col3: st.metric("實際最小秤重(基於標準差)", auto_unit_format(usp_min_w), delta="法規修正" if is_corrected else None, delta_color="inverse")
+    with m_col4: st.metric("客戶設定最小淨重 SNW", auto_unit_format(snw_g) if snw_g else "待定")
 else:
     m_col1, m_col2, m_col3 = st.columns(3)
     with m_col1: st.metric("機台理論最小秤重", auto_unit_format(ideal_min_w_d1))
