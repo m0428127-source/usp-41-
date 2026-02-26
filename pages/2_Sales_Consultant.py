@@ -25,7 +25,7 @@ def convert_from_g(value, unit):
 # --- 2. 網頁配置 ---
 st.set_page_config(page_title="USP <41> 專業合規評估", layout="centered")
 st.title("⚖️ USP 天平合規快速評估")
-st.caption("工程師與業務專用顧問工具 (2026 Feb 1st Edition)")
+st.caption("工程師與業務專用顧問工具 (Official Feb 1, 2026)")
 
 # --- 3. 側邊欄 ---
 with st.sidebar:
@@ -35,6 +35,7 @@ with st.sidebar:
     st.header("🔍 環境檢查 (USP 1251)")
     env_all = st.checkbox("水平、穩固、遠離氣流與熱源")
     preheat = st.checkbox("天平已預熱並校準完成")
+    st.caption("依據 USP <1251> 建議維護良好的秤量環境。")
 
 # --- 4. 快速輸入區 ---
 st.markdown("### 1️⃣ 機台規格與安全係數")
@@ -44,7 +45,7 @@ with col_type:
     balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間", "DU_多量程"])
 
 with col_sf:
-    # 新增：安全係數拉條 (1-10)
+    # 安全係數拉條 (1-10)
     user_sf = st.select_slider("設定安全係數 (Safety Factor)", options=list(range(1, 11)), value=2)
 
 # 分度值選擇邏輯
@@ -59,7 +60,6 @@ if balance_type in ["DR_多區間", "DU_多量程"]:
     with c2:
         d2_raw = st.select_slider(f"分度值 d2 (高量程) ({display_unit})", options=d_converted, value=d_converted[4])
         d2_g = convert_to_g(d2_raw, display_unit)
-    # 在評估時我們主要看 d1 (最嚴苛/常用於最小秤量的量程)
     active_d_g = d1_g
 else:
     d_raw = st.select_slider(f"分度值 d ({display_unit})", options=d_converted, value=d_converted[4])
@@ -77,13 +77,12 @@ with col_std:
                              value=float(smart_format(convert_from_g(active_d_g * 0.8, display_unit))), format="%.7g")
     std_g = convert_to_g(std_raw, display_unit)
 
-# --- 5. 核心邏輯計算 (包含自定義 SF) ---
+# --- 5. 核心邏輯計算 (USP <41>) ---
+# 依據法規，若 s < 0.41d，則以 0.41d 計算
 s_threshold_g = 0.41 * active_d_g
-# USP 底線最小秤重 (SF=1)
-usp_min_weight_g = 2000 * max(std_g, s_threshold_g)
-# 客戶要求的最小秤重 (根據選擇的 SF)
-required_min_weight_g = usp_min_weight_g * (user_sf / 1.0) 
-# 實際當前的安全係數 (SNW / USP底線)
+effective_s = max(std_g, s_threshold_g)
+# 最小秤量公式 m = 2000 * s
+usp_min_weight_g = 2000 * effective_s
 current_real_sf = snw_g / usp_min_weight_g if usp_min_weight_g > 0 else 0
 
 # --- 6. 視覺化診斷結果 ---
@@ -92,49 +91,51 @@ st.markdown(f"### 🏁 評估結論 (目標安全係數: {user_sf})")
 
 if current_real_sf >= user_sf:
     st.success(f"### 🛡️ 當前安全係數 (SF): {current_real_sf:.2f} (符合預期)")
-    st.caption(f"✅ 滿足您設定的 SF={user_sf} 要求，製程非常穩定。")
+    st.caption(f"✅ 滿足設定要求。USP <1251> 指出增加安全係數可補償環境隨機波動。")
 elif current_real_sf >= 1:
     st.warning(f"### 🛡️ 當前安全係數 (SF): {current_real_sf:.2f} (高風險)")
-    st.caption(f"⚠️ 雖符合 USP 〈41〉 底線，但未達到您要求的 SF={user_sf}。環境波動可能導致超差。")
+    st.caption("⚠️ 雖符合 USP <41> 底線，但未達設定之安全邊際，環境變動可能導致不合規。")
 else:
     st.error(f"### 🛡️ 當前安全係數 (SF): {current_real_sf:.2f} (不合規)")
-    st.caption(f"❌ 低於 USP 法規底線。在此環境下，該天平無法滿足秤量需求。")
+    st.caption("❌ 此機台於目前環境下不符合 USP <41> 重複性要求。")
 
-# 三位一體對比指標卡 (修正版)
+# 三位一體對比指標卡
 st.markdown("#### 📊 性能對比")
 c1, c2, c3 = st.columns(3)
 
-# 1. 機台理論極限：基於 d 的物理極限
+# 1. 機台性能極限 (0.41d)
+theoretical_limit_g = 2000 * s_threshold_g
 c1.metric(
-    label=f"理論極限最小秤重 (d={auto_unit_format(active_d_g)}, SF=1)", 
-    value=auto_unit_format(2000 * s_threshold_g),
-    help="這是天平在完全理想、無震動環境下的極限能力 (0.41d * 2000)。"
+    label=f"機台性能極限 (d={auto_unit_format(active_d_g)}, SF=1)", 
+    value=auto_unit_format(theoretical_limit_g),
+    help="根據 USP <41> 之 0.41d 修正得出之理論極限。"
 )
 
-# 2. 實際最小秤重：基於現場 STD
+# 2. 實際最小秤重 (包含法規修正邏輯)
+is_using_threshold = std_g < s_threshold_g
 c2.metric(
-    label="實際最小秤重 (基於現場標準差)", 
+    label="實際最小秤重 (法規判定值)", 
     value=auto_unit_format(usp_min_weight_g),
-    delta=f"環境影響: {(usp_min_weight_g / (2000 * 0.41*s_threshold_g)):.1f}x",
-    delta_color="inverse",
-    help="這是根據您現場實測的標準差算出的最小秤重門檻。若數值遠大於理論極限，代表環境干擾嚴重。"
+    delta="環境優良(採0.41d修正)" if is_using_threshold else f"環境影響: {(usp_min_weight_g / theoretical_limit_g):.1f}x",
+    delta_color="normal" if is_using_threshold else "inverse",
+    help="依據 USP <41> 規範：若 s < 0.41d，則採 0.41d 計算。"
 )
 
 # 3. 客戶目標秤重
 c3.metric(
     label="客戶目標秤重", 
-    value=auto_unit_format(snw_g),
-    help="客戶預計在現場秤量的最輕樣品重量。"
+    value=auto_unit_format(snw_g)
 )
 
-# 加強版：要求的門檻（含安全係數）
-st.info(f"💡 若要滿足您設定的安全係數 **SF={user_sf}**，最小秤重樣品建議需大於：**{auto_unit_format(usp_min_weight_g * user_sf)}**")
+st.info(f"💡 若要滿足設定之安全係數 **SF={user_sf}**，最小淨重建議需大於：**{auto_unit_format(usp_min_weight_g * user_sf)}**")
+
 # --- 7. 專業背書區 ---
 with st.expander("📄 查看詳細法規判斷依據 (USP <41>)"):
     st.markdown(f"""
-    * **USP 底線要求**：重複性標準差 $s$ 若小於 $0.41d$，以 $0.41d$ (${auto_unit_format(s_threshold_g)}$) 計算。
-    * **法規最小秤量 (MinW)**：$2000 \\times s = {auto_unit_format(usp_min_weight_g)}$。
-    * **安全係數說明**：USP 〈1251〉 建議安全係數應足夠應對環境變化。您目前設定為 **{user_sf}** 倍。
+    * **重複性要求**：$2 \times s / m \le 0.10\%$。
+    * **標準差修正**：若實測 $s < 0.41d$，則以 $0.41d$ (${auto_unit_format(s_threshold_g)}$) 計算。
+    * **最小秤量 (MinW)**：$2000 \\times s = {auto_unit_format(usp_min_weight_g)}$。
+    * **安全係數 (SF)**：根據 USP <1251>，建立安全係數可確保在日常環境波動下仍維持合規。
     """)
     if st.button("生成專業評估摘要", use_container_width=True):
         st.code(f"""
@@ -142,10 +143,11 @@ with st.expander("📄 查看詳細法規判斷依據 (USP <41>)"):
 天平類型: {balance_type}
 分度值 d: {auto_unit_format(active_d_g)}
 設定安全係數 (SF): {user_sf}
-實測最小秤量 (SF=1): {auto_unit_format(usp_min_weight_g)}
+法規最小秤量 (SF=1): {auto_unit_format(usp_min_weight_g)}
 建議最小淨重 (需大於): {auto_unit_format(usp_min_weight_g * user_sf)}
 客戶目標淨重: {auto_unit_format(snw_g)}
-判定結論: {"✅ 符合客戶 SF 需求" if current_real_sf >= user_sf else "❌ 未達標，建議改善環境或升級規格"}
+判定結論: {"✅ 符合客戶需求" if current_real_sf >= user_sf else "❌ 未達標，建議改善環境或調整機型"}
         """)
 
-st.info("💡 **小撇步**：拉動上方的「安全係數」滑桿，可以直接向客戶展示在不同風險耐受度下，天平的秤量能力變化。")
+st.divider()
+st.caption("註：本工具計算邏輯嚴格遵循 USP-NF 〈41〉 與 〈1251〉 2026年2月1日生效之最新版本規範。")
