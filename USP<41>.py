@@ -51,13 +51,15 @@ else:
                 d_g = st.number_input(f"可讀數 d (g) - 量程 {i+1}", value=0.0001, format="%.7f", key=f"d_{i}")
                 snw_g = st.number_input(f"客戶預期最小淨重 (g) - 量程 {i+1}", value=0.02, format="%.7f", key=f"snw_{i}")
             with col_b:
-                rep_w_g = st.number_input(f"重複性測試砝碼重量 (g) - 量程 {i+1}", value=0.1, format="%.7f", key=f"rep_{i}")
+            std_g = st.number_input(f"重複性實際量測標準差 STD (g) - 量程 {i+1}", value=0.00008, format="%.7f", key=f"std_{i}")
+            rep_w_g = st.number_input(f"重複性測試砝碼重量 (g) - 量程 {i+1}", value=0.1, format="%.7f", key=f"rep_{i}")
             with col_c:
                 acc_w_g = st.number_input(f"準確度測試砝碼重量 (g) - 量程 {i+1}", value=200.0, format="%.7f", key=f"acc_{i}")
             
             # 將輸入存入清單供後續計算
             range_data.append({
                 "d": d_g, 
+                "std": std_g,
                 "snw": snw_g, 
                 "rep_w": rep_w_g, 
                 "acc_w": acc_w_g
@@ -75,7 +77,7 @@ else:
             acc_min_g = max_cap_g * 0.05
             acc_max_g = max_cap_g
             
-            st.markdown(f"### 📍 量程 {idx+1} 診斷結果 (d = {data['d']:.5f} g)")
+            st.markdown(f"### 📍 量程 {idx+1} 診斷結果 (d = {data['d']:.7f} g)")
             
             # --- 雙欄對照報告 ---
             diag_col1, diag_col2 = st.columns(2)
