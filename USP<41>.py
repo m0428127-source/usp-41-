@@ -31,7 +31,6 @@ st.caption("依據標準：USP-NF 〈41〉 & 〈1251〉 (Official Feb 1, 2026)")
 
 # --- 側邊欄：1. 檢查前作為 (Pre-check) ---
 with st.sidebar:
-    # 新增單位選擇器
     st.header("⚙️ 顯示設定")
     display_unit = st.selectbox("偏好顯示單位", ["g", "mg", "kg"], index=0)
     
@@ -53,10 +52,10 @@ with st.sidebar:
     st.header(f"📋 2. 天平基本規格 ({display_unit})")
     balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU多量程 (Multiple range)"])
     raw_max_cap = st.number_input(
-    f"天平最大秤重量 Max Capacity ({display_unit})", 
-    value=convert_from_g(220.0, display_unit), 
-    step=0.001 # 步進值也改為較自然的數值
-)
+        f"天平最大秤重量 Max Capacity ({display_unit})", 
+        value=convert_from_g(220.0, display_unit), 
+        step=0.001
+    )
     max_cap_g = convert_to_g(raw_max_cap, display_unit)
     is_manufacturing = st.checkbox("用於製造用途 (Manufacturing)?")
 
@@ -70,52 +69,49 @@ else:
     with st.expander(f"📥 測試參數輸入 ({display_unit})", expanded=True):
         col_a, col_b, col_c = st.columns(3)
         
-        
         if balance_type == "DU多量程 (Multiple range)":
             with col_a:
-                # 分度值與淨重：自動根據 value 顯示位數
                 d1_raw = st.number_input(f"實際分度值 d1 ({display_unit}) - 量程 1", value=convert_from_g(0.00001, display_unit), step=0.00001)
                 d2_raw = st.number_input(f"實際分度值 d2 ({display_unit}) - 量程 2", value=convert_from_g(0.0001, display_unit), step=0.0001)
                 snw1_raw = st.number_input(f"客戶預期最小淨重 ({display_unit}) - 量程 1", value=convert_from_g(0.02, display_unit), step=0.01)
                 snw2_raw = st.number_input(f"客戶預期最小淨重 ({display_unit}) - 量程 2", value=convert_from_g(0.2, display_unit), step=0.1)
             with col_b:
-                # 標準差與砝碼
                 std1_raw = st.number_input(f"實際量測標準差 STD1 ({display_unit}) - 量程 1", value=convert_from_g(0.000008, display_unit), step=0.000001)
                 std2_raw = st.number_input(f"實際量測標準差 STD2 ({display_unit}) - 量程 2", value=convert_from_g(0.00008, display_unit), step=0.00001)
                 rep_w_raw = st.number_input(f"重複性測試砝碼重量 ({display_unit}) (共用)", value=convert_from_g(0.1, display_unit), step=0.1)
-            with col_c:
-                acc_w_raw = st.number_input(f"準確度測試砝碼重量 ({display_unit}) (共用)", value=convert_from_g(200.0, display_unit), step=1.0)
-                            
-                # --- 即時容錯警告 (重複性) ---
+                
                 rep_w_g = convert_to_g(rep_w_raw, display_unit)
                 if not (0.1 <= rep_w_g <= max_cap_g * 0.05):
                     st.error(f"⚠️ 砝碼不符 USP 規範！建議: {smart_format(convert_from_g(0.1, display_unit))} ~ {smart_format(convert_from_g(max_cap_g * 0.05, display_unit))} {display_unit}")
             
             with col_c:
-                acc_w_raw = st.number_input(f"準確度測試砝碼重量 ({display_unit}) (共用)", value=convert_from_g(200.0, display_unit), step=0.0000001, format="%.7f")
+                # 【修正 1】: 移除重複定義的 with col_c，將準確度輸入整合在此
+                acc_w_raw = st.number_input(f"準確度測試砝碼重量 ({display_unit}) (共用)", value=convert_from_g(200.0, display_unit), step=1.0)
                 
-                # --- 即時容錯警告 (準確度) ---
                 acc_w_g = convert_to_g(acc_w_raw, display_unit)
                 if not (max_cap_g * 0.05 <= acc_w_g <= max_cap_g):
                     st.error(f"⚠️ 砝碼不符 USP 規範！建議: {smart_format(convert_from_g(max_cap_g * 0.05, display_unit))} ~ {smart_format(convert_from_g(max_cap_g, display_unit))} {display_unit}")
             
             range_data.append({"d": convert_to_g(d1_raw, display_unit), "std": convert_to_g(std1_raw, display_unit), "snw": convert_to_g(snw1_raw, display_unit), "rep_w": rep_w_g, "acc_w": acc_w_g})
             range_data.append({"d": convert_to_g(d2_raw, display_unit), "std": convert_to_g(std2_raw, display_unit), "snw": convert_to_g(snw2_raw, display_unit), "rep_w": rep_w_g, "acc_w": acc_w_g})
+        
         else:
             with col_a:
                 d_raw = st.number_input(f"實際分度值 d ({display_unit})", value=convert_from_g(0.0001, display_unit), step=0.0001)
-                snw_raw = st.number_input(f"客戶預期最小淨重 ({display_unit})", value=convert_from_g(0.02, display_unit), step=0.)
-            with col_b
+                # 【修正 2】: 修復語法錯誤 step=0. -> step=0.01 並閉合括號
+                snw_raw = st.number_input(f"客戶預期最小淨重 ({display_unit})", value=convert_from_g(0.02, display_unit), step=0.01)
+            # 【修正 3】: 補上漏掉的冒號 with col_b:
+            with col_b:
                 std_raw = st.number_input(f"重複性實際量測標準差 STD ({display_unit})", value=convert_from_g(0.00008, display_unit), step=0.00001)
                 rep_w_raw = st.number_input(f"重複性測試砝碼重量 ({display_unit})", value=convert_from_g(0.1, display_unit), step=0.1)
                 rep_w_g = convert_to_g(rep_w_raw, display_unit)
                 if not (0.1 <= rep_w_g <= max_cap_g * 0.05):
-                    st.error(f"⚠️ 砝碼不符 USP 規範！(應在 0.1g ~ 5% MaxCap 之間)")
+                    st.error(f"⚠️ 砝碼不符 USP 規範！(應在 {smart_format(convert_from_g(0.1, display_unit))} ~ {smart_format(convert_from_g(max_cap_g * 0.05, display_unit))} {display_unit} 之間)")
             with col_c:
                 acc_w_raw = st.number_input(f"準確度測試砝碼重量 ({display_unit})", value=convert_from_g(200.0, display_unit), step=1.0)
                 acc_w_g = convert_to_g(acc_w_raw, display_unit)
                 if not (max_cap_g * 0.05 <= acc_w_g <= max_cap_g):
-                    st.error(f"⚠️ 砝碼不符 USP 規範！(應在 5% ~ 100% MaxCap 之間)")
+                    st.error(f"⚠️ 砝碼不符 USP 規範！(應在 {smart_format(convert_from_g(max_cap_g * 0.05, display_unit))} ~ {smart_format(convert_from_g(max_cap_g, display_unit))} {display_unit} 之間)")
             
             range_data.append({"d": convert_to_g(d_raw, display_unit), "std": convert_to_g(std_raw, display_unit), "snw": convert_to_g(snw_raw, display_unit), "rep_w": rep_w_g, "acc_w": acc_w_g})
 
@@ -124,7 +120,7 @@ else:
         st.subheader("🏁 USP 〈41〉 設備適宜性診斷報告")
         
         for idx, data in enumerate(range_data):
-            # --- 計算邏輯 (核心邏輯維持 g) ---
+            # 計算邏輯
             s_threshold_g = 0.41 * data['d']
             rep_min_g, rep_max_g = 0.1000, max_cap_g * 0.05
             acc_min_g, acc_max_g = max_cap_g * 0.05, max_cap_g
@@ -136,7 +132,6 @@ else:
 
             st.markdown(f"### 📍 量程 {idx+1} 診斷結果 (d = {smart_format(convert_from_g(data['d'], display_unit))} {display_unit})")
             
-            # --- 雙欄報告 ---
             diag_col1, diag_col2 = st.columns(2)
 
             with diag_col1:
@@ -172,7 +167,6 @@ else:
                     st.error(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{format_weight_with_unit_dynamic(data['acc_w'], display_unit)}` ({status_acc_text})")
                 st.caption(f"💡 砝碼證書擴展不確定度 $U$ 須 $\le {smart_format(convert_from_g(mpe_absolute_g, display_unit))} \\text{{ {display_unit}}}$")
 
-            # --- 關鍵能力判定 ---
             st.markdown(f"#### 🛡️ 關鍵秤量能力判定")
             res_c1, res_c2, res_c3, res_c4 = st.columns(4)
             with res_c1:
