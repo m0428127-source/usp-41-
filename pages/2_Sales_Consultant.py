@@ -108,6 +108,7 @@ is_corrected = std_g < s_limit_d1
 usp_min_w = 2000 * effective_s
 current_sf = snw_g / usp_min_w if (snw_g is not None and usp_min_w > 0) else 0
 
+# --- 6. 專業結論面板 (方案三：強化版) ---
 st.divider()
 st.markdown("### 🏁 專業評估結論")
 
@@ -117,15 +118,22 @@ else:
     snw_display = auto_unit_format(snw_g)
     minw_display = auto_unit_format(usp_min_w)
     
+    # 1. 顯示核心數值：當前安全係數 (SF)
+    # 使用 st.metric 或大標題呈現
+    st.markdown(f"#### 當前實際安全係數 (SF): `{current_sf:.2f}`")
+
+    # 2. 根據條件顯示狀態與詳細訊息
     if current_sf >= user_sf:
-        msg = f"已達標：當前 SNW ({snw_display}) 處於安全秤量區間，安全緩衝充足。"
+        msg = f"已達標：當前淨重 ({snw_display}) 遠高於判定門檻 ({minw_display})，安全緩衝充足。"
         st.success(f"### 🛡️ 安全狀態：優良\n{msg}")
     elif current_sf >= 1:
-        msg = f"請注意：當前 SNW ({snw_display}) 雖合法但緩衝不足，建議將目標 SF 提升至 {user_sf}。"
+        msg = f"請注意：當前淨重 ({snw_display}) 雖符合法規最低限度，但低於您的目標安全係數 {user_sf}，建議提高秤量值。"
         st.warning(f"### ⚠️ 安全狀態：高風險\n{msg}")
     else:
-        msg = f"嚴重警告：當前 SNW ({snw_display}) 低於判定門檻 MinW ({minw_display})，不符合 USP <41>。"
+        msg = f"嚴重警告：當前淨重 ({snw_display}) 已低於 USP <41> 判定之最小秤量門檻 ({minw_display})，將導致合規性失效。"
         st.error(f"### ❌ 安全狀態：不合規\n{msg}")
+
+# --- 下方接續原有的指標卡 (st.metric) ---}")
 
 # 指標卡區塊
 if d2_g:
