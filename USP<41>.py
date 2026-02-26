@@ -28,8 +28,8 @@ with st.sidebar:
 
     st.divider()
     st.header("📋 2. 天平基本規格")
-    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU多量程 (Multiple range)"])
-    max_cap_g = st.number_input("天平最大秤重量 Max Capacity (g)", value=220.0, format="%.4f")
+    balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU_多量程 (Multiple range)"])
+    max_cap_g = st.number_input("天平最大秤重量 Max Capacity (g)", value=220)
     is_manufacturing = st.checkbox("用於製造用途 (Manufacturing)?")
 
 # --- 主頁面邏輯 ---
