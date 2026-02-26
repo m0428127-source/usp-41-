@@ -27,12 +27,13 @@ st.set_page_config(page_title="USP <41> & <1251> 專業合規工作站", layout=
 st.title("⚖️ USP 〈41〉 & 〈1251〉 天平測試合規工作站")
 st.caption("依據標準：USP-NF 〈41〉 & 〈1251〉 (Official Feb 1, 2026)")
 
-# --- 側邊欄 ---
+# --- 側邊欄：1. 檢查前作為 (Pre-check) ---
 with st.sidebar:
     st.header("⚙️ 顯示設定")
     display_unit = st.selectbox("偏好顯示單位", ["g", "mg", "kg"], index=0)
     st.divider()
     st.header("🔍 1. 檢查前作為 (Pre-check)")
+    st.markdown("依據 USP 〈1251〉 規範，請先確認環境與設備狀態：")
     env_surface = st.checkbox("水平且非磁性的穩固表面 (Level & Nonmagnetic)")
     env_location = st.checkbox("遠離氣流、門窗、震動源與熱源")
     env_static = st.checkbox("濕度控制適當或已具備除靜電措施")
@@ -47,8 +48,11 @@ range_data = []
 p_step = 0.0000001
 p_format = "%.7g"
 
+# --- 數據輸入區 ---
 with st.expander(f"📥 測試參數輸入 ({display_unit})", expanded=True):
-    tab_base, tab_process, tab_std, tab_acc = st.tabs(["📋 天平基本規格", "🎯 Process requirement", "📊 重複性測試", "🎯 準確性測試"])
+    tab_base, tab_process, tab_std, tab_acc = st.tabs([
+        "📋 天平基本規格", "🎯 Process requirement", "📊 重複性測試", "🎯 準確性測試"
+    ])
     
     with tab_base:
         balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間 (Multi-interval)", "DU_多量程 (Multiple range)"])
@@ -101,43 +105,66 @@ with st.expander(f"📥 測試參數輸入 ({display_unit})", expanded=True):
         else:
             range_data.append({"d": d_g, "std": std_g, "snw": snw_g, "rep_w": rep_w_g, "acc_w": acc_w_g, "label": "量程"})
 
-# --- 診斷報告 ---
+# --- 執行診斷按鈕 ---
 if not is_manufacturing and st.button("🚀 執行全面合規性診斷", use_container_width=True):
     st.subheader("🏁 USP 〈41〉 設備適宜性診斷報告")
     for idx, data in enumerate(range_data):
-        # 重複性與準確度邏輯
         s_threshold_g = 0.41 * data['d']
         rep_min_g, rep_max_g = 0.100, max_cap_g * 0.05
         acc_min_g, acc_max_g = max_cap_g * 0.05, max_cap_g
         
+        # 核心邏輯修正：考慮 1/3 * 0.05%
+        mpe_limit_ratio = (0.05 / 100) / 3 
+        mpe_absolute_g = data['acc_w'] * mpe_limit_ratio
+        
         actual_min_weight_g = 2000 * max(data['std'], s_threshold_g)
         safety_factor = data['snw'] / actual_min_weight_g if actual_min_weight_g > 0 else 0
-
-        # 優化點：根據砝碼重量計算 $U$ 的絕對上限
-        mpe_limit_ratio = (0.05 / 100) / 3
-        mpe_absolute_g = data['acc_w'] * mpe_limit_ratio
 
         with st.container(border=True):
             st.markdown(f"### 📍 {data['label']} 診斷結果 (d = {auto_unit_format(data['d'])})")
             diag_col1, diag_col2 = st.columns(2)
             with diag_col1:
                 st.info("#### 1. 重複性測試要求 (Repeatability)")
-                st.markdown(f"關鍵限制：若 $s < {auto_unit_format(s_threshold_g)}$，計算時需以該值取代。")
-                if rep_min_g <= data['rep_w'] <= rep_max_g: st.success(f"擬用砝碼：`{auto_unit_format(data['rep_w'])}` (✅)")
-                else: st.error(f"擬用砝碼：`{auto_unit_format(data['rep_w'])}` (❌)")
+                is_rep_ok = rep_min_g <= data['rep_w'] <= rep_max_g
+                st.markdown(f"""
+                **【法規規格要求】**
+                * **砝碼區間**：`{auto_unit_format(rep_min_g)}` ~ `{auto_unit_format(rep_max_g)}`
+                * **允收標準**：$2 \\times s / m_{{SNW}} \\le 0.10\\%$
+                * **關鍵限制**：若 $s < {auto_unit_format(s_threshold_g)}$ ($0.41d$)，計算時需以該值取代。
+                """)
+                if is_rep_ok: st.success(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{auto_unit_format(data['rep_w'])}` (✅ 符合規範)")
+                else: st.error(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{auto_unit_format(data['rep_w'])}` (❌ 規格不符)")
+
             with diag_col2:
                 st.info("#### 2. 準確度測試要求 (Accuracy)")
-                st.markdown(f"允收標準：誤差 $\le 0.05\%$")
-                if acc_min_g <= data['acc_w'] <= acc_max_g: st.success(f"擬用砝碼：`{auto_unit_format(data['acc_w'])}` (✅)")
-                else: st.error(f"擬用砝碼：`{auto_unit_format(data['acc_w'])}` (❌)")
-                st.caption(f"💡 砝碼證書擴展不確定度 $U$ 須 $\le {auto_unit_format(mpe_absolute_g)}$ (即砝碼重之 0.0167%)")
+                is_acc_ok = acc_min_g <= data['acc_w'] <= acc_max_g
+                st.markdown(f"""
+                **【法規規格要求】**
+                * **砝碼區間**：`{auto_unit_format(acc_min_g)}` ~ `{auto_unit_format(acc_max_g)}`
+                * **允收標準**：誤差 $\le 0.05\\%$
+                * **砝碼限制**：$MPE$ 或 $U$ 需小於 **{mpe_limit_ratio*100:.4f}\\%** (即 0.05% 的 1/3)。
+                """)
+                if is_acc_ok: st.success(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{auto_unit_format(data['acc_w'])}` (✅ 符合規範)")
+                else: st.error(f"**【實測對比判斷】**\n\n* 擬用砝碼：`{auto_unit_format(data['acc_w'])}` (❌ 規格不符)")
+                st.caption(f"💡 砝碼重量為 {auto_unit_format(data['acc_w'])}，證書擴展不確定度 $U$ 須 $\le {auto_unit_format(mpe_absolute_g)}$")
 
             st.markdown(f"#### 🛡️ 關鍵秤量能力判定")
             res_c1, res_c2, res_c3, res_c4 = st.columns(4)
-            res_c1.metric("理想最小秤重 (0.41d)", auto_unit_format(2000 * s_threshold_g))
-            res_c2.metric("實際最小秤重 (MinW)", auto_unit_format(actual_min_weight_g))
-            res_c3.metric("客戶預期最小淨重", auto_unit_format(data['snw']))
+            res_c1.metric("最小淨重量 (理想 0.41d)", auto_unit_format(2000 * s_threshold_g))
+            res_c2.metric("最小秤重量 (實際 MinW)", auto_unit_format(actual_min_weight_g))
+            res_c3.metric("客戶預期最小淨重量", auto_unit_format(data['snw']))
             res_c4.metric("安全係數 (SF)", f"{safety_factor:.2f}")
 
-            if data['snw'] >= actual_min_weight_g: st.success(f"✅ **{data['label']} 判定：符合秤量需求**")
-            else: st.error(f"❌ **{data['label']} 判定：不符合需求**")
+            if data['snw'] >= actual_min_weight_g:
+                st.success(f"✅ **{data['label']} 判定：符合秤量需求** (預期 {auto_unit_format(data['snw'])} $\ge$ 實際 {auto_unit_format(actual_min_weight_g)})")
+            else:
+                st.error(f"❌ **{data['label']} 判定：不符合需求** (預期 {auto_unit_format(data['snw'])} < 實際 {auto_unit_format(actual_min_weight_g)})")
+        st.divider()
+
+st.subheader("📑 專業評估指標說明")
+st.info("""
+* **理想最小秤重量 (Minimum weight SNW)**: 基於機台可讀數 $d$ 的理論最優值，代表天平在無環境干擾下的極限。
+* **最小秤重量 (Minimum weight MinW)**: 依據現場重複性測試 (STD) 算得之真實值。若實測 STD 優於 $0.41d$，則法規強制以 $0.41d$ 計算。
+* **判定基準**: 當「客戶預期最小淨重」 $\ge$ 「最小秤重量」時，該量程判定為「符合秤量需求」。
+* **安全係數 (Safety Factor)**: 反映用戶秤量目標相對於法規底線的裕度。USP 〈1251〉 建議安全係數應 $\ge 2$ 以確保製程穩定。
+""")
