@@ -157,7 +157,7 @@ else:
             st.divider()
 
 # --- 底部法規導引 ---
-st.subheader("📑 專業評估指標說明")
+st.subheader("📑 評估指標說明")
 st.info("""
 * **多量程 (Multiple Range)**：USP 〈41〉 規定必須在每個使用的量程執行測
 * **最小淨重量 (Ideal SNW)**: 基於解析度 $d$ 的理論最優值，代表天平在無環境干擾下的極限。
