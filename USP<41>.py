@@ -59,8 +59,8 @@ else:
                 d_g = st.number_input(f"實際分度值 d (g) - 量程 {i+1}", value=0.0001, step=0.0000001, format="%.7f", key=f"d_{i}")
                 snw_g = st.number_input(f"客戶預期最小淨重 (g) - 量程 {i+1}", value=0.02, step=0.0000001, format="%.7f", key=f"snw_{i}")
             with col_b:
-                std_g = st.number_input(f"重複性實際量測標準差 STD (g) - 量程 {i+1}", value=0.00008, step=0.0000001, format="%.7f", key=f"std_{i}")
                 rep_w_g = st.number_input(f"重複性測試砝碼重量 (g) - 量程 {i+1}", value=0.1, step=0.0000001, format="%.7f", key=f"rep_{i}")
+                std_g = st.number_input(f"重複性實際量測標準差 STD (g) - 量程 {i+1}", value=0.00008, step=0.0000001, format="%.9f", key=f"std_{i}")
             with col_c:
                 acc_w_g = st.number_input(f"準確度測試砝碼重量 (g) - 量程 {i+1}", value=200.0, step=0.0000001, format="%.7f", key=f"acc_{i}")
             
