@@ -50,8 +50,8 @@ with col1:
 with col2:
     has_std = st.radio("評估模式", ["手動輸入 STD", "無數據 (理論預估)"])
 
-# 分度值邏輯
-d_base_options = [1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
+# 可讀數值邏輯
+d_base_options = [1.0, 0.5, 0.2, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
 d_converted = [float(smart_format(convert_from_g(x, display_unit))) for x in d_base_options]
 
 if balance_type in ["DR_多區間", "DU_多量程"]:
@@ -62,7 +62,7 @@ if balance_type in ["DR_多區間", "DU_多量程"]:
         d2_g = convert_to_g(st.select_slider(f"d2 (寬鬆) ({display_unit})", options=d_converted, value=d_converted[4]), display_unit)
     active_d_g = d1_g
 else:
-    active_d_g = convert_to_g(st.select_slider(f"分度值 d ({display_unit})", options=d_converted, value=d_converted[4]), display_unit)
+    active_d_g = convert_to_g(st.select_slider(f"可讀數值 d ({display_unit})", options=d_converted, value=d_converted[4]), display_unit)
     d1_g = active_d_g
 
 # 自動更新 STD 預設值 (若換型號則自動帶入 0.8d)
