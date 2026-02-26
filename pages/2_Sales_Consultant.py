@@ -167,26 +167,39 @@ else:
     with m_col3: 
         st.metric("客戶設定最小淨重", auto_unit_format(snw_g) if snw_g else "待定")
 
-# --- 7. 報告摘要 ---
+# --- 7. 報告摘要 (新增判定邏輯說明) ---
 st.divider()
 st.markdown("### 📄 專業評估報告摘要")
 
 if is_snw_unknown:
-    sf_text, snw_text, result_text = "待定", "待定", "待定"
+    sf_text, snw_text, result_text, detail_note = "待定", "待定", "待定", "尚未輸入淨重數據"
 else:
     sf_text = f"{current_sf:.2f}"
     snw_text = auto_unit_format(snw_g)
-    result_text = "✅ 符合法規" if current_sf >= 1 else "❌ 不符合法規"
+    
+    # 判定邏輯文字化
+    if current_sf >= user_sf:
+        result_text = "✅ 合規 (優良)"
+        detail_note = f"實際 SF ({sf_text}) ≥ 目標 SF ({user_sf})，秤量環境極為安全。"
+    elif current_sf >= 1:
+        result_text = "⚠️ 合規 (高風險)"
+        detail_note = f"符合 USP 最低要求 (SF ≥ 1)，但低於目標 SF ({user_sf})，建議提高秤量值或優化環境。"
+    else:
+        result_text = "❌ 不合規"
+        detail_note = f"實際 SF ({sf_text}) < 1，未達到 USP <41> 規定的最小秤量門檻。"
 
 d2_report_line = f"理論最小秤量極限 (d2: 0.41d2): {auto_unit_format(ideal_min_w_d2)}\n" if d2_g else ""
 
 copyable_report = f"""【USP 41 專業評估報告 - 2026 Edition】
 ------------------------------------------
-評估結果：{result_text}
+評估狀態：{result_text}
+判定說明：{detail_note}
+
 天平可讀數 (d1): {auto_unit_format(d1_g)}
 {"天平可讀數 (d2): " + auto_unit_format(d2_g) if d2_g else ""}
 理論最小秤量極限 (d1: 0.41d1): {auto_unit_format(ideal_min_w_d1)}
-{d2_report_line}重複性實測標準差 (Std): {auto_unit_format(std_g) if std_g > 0 else "N/A"}
+{d2_report_line}
+重複性實測標準差 (Std): {auto_unit_format(std_g) if std_g > 0 else "N/A"}
 判定最小秤重量 (MinW): {auto_unit_format(usp_min_w)}
 客戶設定最小淨重 (SNW): {snw_text}
 實際安全係數 (SF): {sf_text} (目標要求: {user_sf})
