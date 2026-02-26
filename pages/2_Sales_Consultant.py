@@ -47,9 +47,8 @@ st.markdown("### 📋 1️⃣ 設定規格與需求")
 col1, col2 = st.columns(2)
 with col1:
     balance_type = st.selectbox("天平類型", ["單一量程", "DR_多區間", "DU_多量程"])
-    user_sf = st.select_slider("目標安全係數 (SF)", options=list(range(1, 11)), value=2)
 with col2:
-    has_std = st.radio("評估模式", ["手動輸入實測 Std", "無數據 (理論預估)"])
+    user_sf = st.select_slider("目標安全係數 (SF)", options=list(range(1, 11)), value=2)
 
 d_base_options = [1.0, 0.5, 0.2, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001]
 d_converted = [float(convert_from_g(x, display_unit)) for x in d_base_options]
@@ -73,7 +72,7 @@ if active_d_g != st.session_state.last_d:
     st.session_state.last_d = active_d_g
 
 st.markdown("---")
-st.markdown("### 📥 2️⃣ 數據輸入區")
+st.markdown("### 📥 2️⃣ 數據輸入與模式")
 
 col_snw, col_std = st.columns(2)
 with col_snw:
@@ -90,6 +89,7 @@ with col_snw:
         snw_g = None
 
 with col_std:
+    has_std = st.radio("評估模式", ["手動輸入實測 Std", "無數據 (理論預估)"], horizontal=True)
     if has_std == "手動輸入實測 Std":
         std_input = st.text_input(f"重複性實測標準差 Std ({display_unit})", value=smart_format(st.session_state.std_val), key="std_text_field")
         try:
@@ -119,7 +119,6 @@ if is_snw_unknown:
 else:
     snw_display = auto_unit_format(snw_g)
     minw_display = auto_unit_format(usp_min_w)
-    
     st.markdown(f"#### 當前實際安全係數 (SF): `{current_sf:.2f}`")
 
     if current_sf >= user_sf:
@@ -181,11 +180,3 @@ copyable_report = f"""【USP 41 專業評估報告 - 2026 Edition】
 ------------------------------------------
 """
 st.code(copyable_report, language="text")
-
-# 加入下載按鈕增加優化感
-st.download_button(
-    label="📥 下載文字報告 (.txt)",
-    data=copyable_report,
-    file_name=f"USP41_Report_{snw_text.replace(' ', '')}.txt",
-    mime="text/plain"
-)
