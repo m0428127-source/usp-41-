@@ -1,15 +1,11 @@
 import streamlit as st
 
-# --- 1. 工具函數 (核心優化) ---
+# --- 1. 工具函數 ---
 def smart_format(value):
     """ 
-    最完美的數據呈現：
-    1. 絕不使用科學記號 (如 8e-05)
-    2. 自動去掉末端多餘的 0 (如 220.0000)
-    3. 輸入 220 顯示 220，輸入 0.00008 顯示 0.00008
+    絕不使用科學記號，且自動修剪末尾無意義的 0
     """
     if value is None or value == 0: return "0"
-    # 使用 .10f 強制展開小數避免科學記號，再移除右側多餘的 0 與小數點
     return f"{value:.10f}".rstrip('0').rstrip('.')
 
 def auto_unit_format(g_value):
@@ -63,6 +59,9 @@ with col2:
 d_base_options = [1.0, 0.5, 0.2, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001]
 d_converted = [float(convert_from_g(x, display_unit)) for x in d_base_options]
 
+# 初始化 d2_g
+d2_g = None
+
 if balance_type in ["DR_多區間", "DU_多量程"]:
     c1, c2 = st.columns(2)
     with c1: 
@@ -81,13 +80,12 @@ if active_d_g != st.session_state.last_d:
     st.session_state.last_d = active_d_g
 
 st.markdown("---")
-# --- 數據輸入區 (關鍵修正：改用 text_input 兼顧去零與非科學記號) ---
+# --- 數據輸入區 ---
 col_snw, col_std = st.columns(2)
 
 with col_snw:
     is_snw_unknown = st.checkbox("尚未決定最小淨重量")
     if not is_snw_unknown:
-        # 改用 text_input 並預設呈現 smart_format 後的字串
         snw_input = st.text_input(f"客戶設定最小淨重量 ({display_unit})", 
                                   value=smart_format(st.session_state.snw_val),
                                   key="snw_text_field")
@@ -95,7 +93,6 @@ with col_snw:
             snw_raw = float(snw_input)
             st.session_state.snw_val = snw_raw
         except ValueError:
-            st.error("請輸入有效數字")
             snw_raw = st.session_state.snw_val
         snw_g = convert_to_g(snw_raw, display_unit)
     else:
@@ -110,19 +107,24 @@ with col_std:
             std_raw = float(std_input)
             st.session_state.std_val = std_raw
         except ValueError:
-            st.error("請輸入有效數字")
             std_raw = st.session_state.std_val
         std_g = convert_to_g(std_raw, display_unit)
     else:
         st.info("ℹ️ 模式：機台理論極限預估")
         std_g = 0
 
-# --- 5. 核心計算 (邏輯文字完全不變) ---
-s_limit = 0.41 * d1_g
-effective_s = max(std_g, s_limit)
-is_corrected = std_g < s_limit
+# --- 5. 核心計算 ---
+# d1 計算
+s_limit_d1 = 0.41 * d1_g
+ideal_min_w_d1 = 2000 * s_limit_d1
+
+# d2 計算 (如果有)
+ideal_min_w_d2 = 2000 * (0.41 * d2_g) if d2_g else None
+
+# 實際合規計算 (基於實測 Std 與 d1)
+effective_s = max(std_g, s_limit_d1)
+is_corrected = std_g < s_limit_d1
 usp_min_w = 2000 * effective_s
-ideal_min_w = 2000 * s_limit
 current_sf = snw_g / usp_min_w if (snw_g is not None and usp_min_w > 0) else 0
 
 # --- 6. 專業結論面板 ---
@@ -139,21 +141,20 @@ else:
     else:
         st.error(f"❌ **安全狀態：不合規**")
 
-# 指標卡 (自動去零且非科學化顯示)
-c1, c2, c3 = st.columns(3)
-with c1:
-    st.metric("機台理想最小秤重量", auto_unit_format(ideal_min_w))
-with c2:
-    st.metric("機台實際最小秤重量", auto_unit_format(usp_min_w), 
-              delta="法規修正" if is_corrected else None, delta_color="inverse")
-with c3:
-    if not is_snw_unknown:
-        st.metric("客戶設定最小淨重量", auto_unit_format(snw_g), 
-                  delta=f"SF: {current_sf:.2f}" if current_sf > 0 else None)
-    else:
-        st.metric("客戶設定最小淨重量", "待定")
+# 指標卡
+if d2_g:
+    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+    with m_col1: st.metric("d1 理想極限", auto_unit_format(ideal_min_w_d1))
+    with m_col2: st.metric("d2 理想極限", auto_unit_format(ideal_min_w_d2))
+    with m_col3: st.metric("實際判定 MinW", auto_unit_format(usp_min_w), delta="法規修正" if is_corrected else None, delta_color="inverse")
+    with m_col4: st.metric("設定 SNW", auto_unit_format(snw_g) if snw_g else "待定")
+else:
+    m_col1, m_col2, m_col3 = st.columns(3)
+    with m_col1: st.metric("機台理想最小秤重", auto_unit_format(ideal_min_w_d1))
+    with m_col2: st.metric("機台實際最小秤重", auto_unit_format(usp_min_w), delta="法規修正" if is_corrected else None, delta_color="inverse")
+    with m_col3: st.metric("客戶設定最小淨重", auto_unit_format(snw_g) if snw_g else "待定")
 
-# --- 7. 報告摘要 (邏輯文字完全不變) ---
+# --- 7. 報告摘要 ---
 st.divider()
 st.markdown("### 📄 專業評估報告摘要")
 
@@ -164,12 +165,15 @@ else:
     snw_text = auto_unit_format(snw_g)
     result_text = "✅ 符合法規" if current_sf >= 1 else "❌ 不符合法規"
 
+d2_report_line = f"理論最小秤量極限 (d2: 0.41d2): {auto_unit_format(ideal_min_w_d2)}\n" if d2_g else ""
+
 copyable_report = f"""【USP 41 專業評估報告 - 2026 Edition】
 ------------------------------------------
 評估結果：{result_text}
-天平可讀數 (d): {auto_unit_format(d1_g)}
-理論最小秤量極限 (0.41d): {auto_unit_format(ideal_min_w)}
-重複性實測標準差 (Std): {auto_unit_format(std_g) if std_g > 0 else "N/A"}
+天平可讀數 (d1): {auto_unit_format(d1_g)}
+{"天平可讀數 (d2): " + auto_unit_format(d2_g) if d2_g else ""}
+理論最小秤量極限 (d1: 0.41d1): {auto_unit_format(ideal_min_w_d1)}
+{d2_report_line}重複性實測標準差 (Std): {auto_unit_format(std_g) if std_g > 0 else "N/A"}
 判定最小秤重量 (MinW): {auto_unit_format(usp_min_w)}
 客戶設定最小淨重 (SNW): {snw_text}
 實際安全係數 (SF): {sf_text} (目標要求: {user_sf})
