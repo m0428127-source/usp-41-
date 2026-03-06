@@ -35,7 +35,7 @@ with st.sidebar:
     st.info("💡 手機操作建議：請垂直持握手機以獲得最佳閱讀體驗。")
 
 # ---------------------------------------------------------
-# STEP 1: 天平基本規格與預檢
+# STEP 1: 天平基本規格與預檢 (可讀數 d 已移至此處)
 # ---------------------------------------------------------
 st.markdown("### 📋 第一步：天平基本規格")
 with st.container(border=True):
@@ -51,8 +51,18 @@ with st.container(border=True):
     raw_max_cap = st.number_input(f"天平最大秤量 Max capcity ({display_unit})", value=float(convert_from_g(220.0, display_unit)), format="%.4f")
     max_cap_g = convert_to_g(raw_max_cap, display_unit)
 
+    # --- 可讀數 d 選擇區 ---
+    d_options = [1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
+    d_conv = [float(convert_from_g(x, display_unit)) for x in d_options]
+    
+    if "DU" in balance_type:
+        d1_raw = st.select_slider("可讀數 d1", options=d_conv, value=d_conv[4])
+        d2_raw = st.select_slider("可讀數 d2", options=d_conv, value=d_conv[3])
+    else:
+        d_raw = st.select_slider("可讀數 d", options=d_conv, value=d_conv[4])
+
 # ---------------------------------------------------------
-# STEP 2: 砝碼選用規範與預檢 (將用戶文字整合在此)
+# STEP 2: 砝碼選用規範與預檢
 # ---------------------------------------------------------
 st.markdown("### 🎯 第二步：測試砝碼預檢")
 with st.container(border=True):
@@ -103,20 +113,15 @@ with st.container(border=True):
         * **0.41d 規則**：若實測標準差 $s < 0.41d$ ($d$ 為可讀數)，則計算時必須以 $0.41d$ 取代 $s$。
         * **最小稱量值 ($m_{min}$)**：即 $2000 * std$ (或 $2000 * 0.41d$)。
         """)
-
-    d_options = [1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
-    d_conv = [float(convert_from_g(x, display_unit)) for x in d_options]
     
-    # 依據 DU/單量程動態調整
+    # 依據 DU/單量程動態調整 (使用第一步定義的 d 值)
     if "DU" in balance_type:
         st.write("**【量程 1 (Fine)】**")
-        d1_raw = st.select_slider("可讀數 d1", options=d_conv, value=d_conv[4])
         std1_raw = st.number_input("實測標準差 s1", value=0.00008, format="%.6f")
         snw1_raw = st.number_input("需求最小淨重 SNW1", value=0.02, format="%.4f")
         
         st.divider()
         st.write("**【量程 2 (Coarse)】**")
-        d2_raw = st.select_slider("可讀數 d2", options=d_conv, value=d_conv[3])
         std2_raw = st.number_input("實測標準差 s2", value=0.0008, format="%.6f")
         snw2_raw = st.number_input("需求最小淨重 SNW2", value=0.2, format="%.4f")
         
@@ -125,7 +130,6 @@ with st.container(border=True):
             {"d": convert_to_g(d2_raw, display_unit), "s": convert_to_g(std2_raw, display_unit), "snw": convert_to_g(snw2_raw, display_unit), "label": "粗量程 (Coarse)"}
         ]
     else:
-        d_raw = st.select_slider("可讀數 d", options=d_conv, value=d_conv[4])
         std_raw = st.number_input("實測標準差 s", value=0.00008, format="%.6f")
         snw_raw = st.number_input("需求最小淨重 SNW", value=0.02, format="%.4f")
         test_ranges = [{"d": convert_to_g(d_raw, display_unit), "s": convert_to_g(std_raw, display_unit), "snw": convert_to_g(snw_raw, display_unit), "label": "單一/精細量程"}]
