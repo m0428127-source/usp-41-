@@ -48,7 +48,7 @@ with st.container(border=True):
     if "DR" in balance_type:
         st.warning("💡 **專業提醒**：因為 DR 僅須測試細量程 (Finest range)，若您的量測涉及跨越雙量程，請選擇 **DU 類型** 以執行完整評估。")
     
-    raw_max_cap = st.number_input(f"天平最大秤量 Max ({display_unit})", value=float(convert_from_g(220.0, display_unit)), format="%.4f")
+    raw_max_cap = st.number_input(f"天平最大秤量 Max capcity ({display_unit})", value=float(convert_from_g(220.0, display_unit)), format="%.4f")
     max_cap_g = convert_to_g(raw_max_cap, display_unit)
 
 # ---------------------------------------------------------
@@ -60,11 +60,11 @@ with st.container(border=True):
     with st.expander("📌 點擊查看：USP <41> 砝碼選用具體規範"):
         st.markdown("""
         **一、 重複性測試 (Repeatability)**
-        * **砝碼重量**：介於 **100 mg** 到 **天平最大秤量 (Max) 的 5%** 之間。
+        * **砝碼重量**：介於 **100 mg** 到 **天平最大秤量 (Max capcity) 的 5%** 之間。
         * **測試程序**：必須使用單一測試砝碼，重複稱量至少 **10 次**。
         
         **二、 準確性測試 (Accuracy)**
-        * **測試範圍**：應使用標稱質量介於 **Max 的 5% 至 100%** 之間的砝碼。
+        * **測試範圍**：應使用標稱質量介於 **Max capcity 的 5% 至 100%** 之間的砝碼。
         * **1/3 準則**：砝碼的擴充不確定度 (U) 或 MPE 必須小於 **0.05% 的三分之一**。
         """)
 
@@ -72,7 +72,7 @@ with st.container(border=True):
     rep_min, rep_max = 0.1, max_cap_g * 0.05
     acc_min, acc_max = max_cap_g * 0.05, max_cap_g
     
-    st.markdown(f"**根據您的 Max，法定砝碼應選用：**")
+    st.markdown(f"**根據您的 Max capcity，法定砝碼應選用：**")
     st.code(f"重複性：{auto_unit_format(rep_min)} ~ {auto_unit_format(rep_max)}\n準確度：{auto_unit_format(acc_min)} ~ {auto_unit_format(acc_max)}")
 
     col1, col2 = st.columns(2)
@@ -101,7 +101,7 @@ with st.container(border=True):
         st.markdown("""
         * **判定標準**：$2s / m_{SNW} \\le 0.10\%$
         * **0.41d 規則**：若實測標準差 $s < 0.41d$ ($d$ 為可讀數)，則計算時必須以 $0.41d$ 取代 $s$。
-        * **最小稱量值 ($m_{min}$)**：即 $2000 * s$ (或 $2000 * 0.41d$)。
+        * **最小稱量值 ($m_{min}$)**：即 $2000 * std$ (或 $2000 * 0.41d$)。
         """)
 
     d_options = [1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
