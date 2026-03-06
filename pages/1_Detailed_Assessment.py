@@ -100,7 +100,7 @@ with st.container(border=True):
     with st.expander("📌 點擊查看：重複性判定標準 (0.41d 規則)"):
         st.markdown("""
         * **判定標準**：$2s / m_{SNW} \\le 0.10\%$
-        * **0.41d 規則**：若實測標準差 $s < 0.41d$ ($d$ 為分度值)，則計算時必須以 $0.41d$ 取代 $s$。
+        * **0.41d 規則**：若實測標準差 $s < 0.41d$ ($d$ 為可讀數)，則計算時必須以 $0.41d$ 取代 $s$。
         * **最小稱量值 ($m_{min}$)**：即 $2000 \times s$ (或 $2000 \times 0.41d$)。
         """)
 
@@ -110,13 +110,13 @@ with st.container(border=True):
     # 依據 DU/單量程動態調整
     if "DU" in balance_type:
         st.write("**【量程 1 (Fine)】**")
-        d1_raw = st.select_slider("分度值 d1", options=d_conv, value=d_conv[4])
+        d1_raw = st.select_slider("可讀數 d1", options=d_conv, value=d_conv[4])
         std1_raw = st.number_input("實測標準差 s1", value=0.00008, format="%.6f")
         snw1_raw = st.number_input("需求最小淨重 SNW1", value=0.02, format="%.4f")
         
         st.divider()
         st.write("**【量程 2 (Coarse)】**")
-        d2_raw = st.select_slider("分度值 d2", options=d_conv, value=d_conv[3])
+        d2_raw = st.select_slider("可讀數 d2", options=d_conv, value=d_conv[3])
         std2_raw = st.number_input("實測標準差 s2", value=0.0008, format="%.6f")
         snw2_raw = st.number_input("需求最小淨重 SNW2", value=0.2, format="%.4f")
         
@@ -125,7 +125,7 @@ with st.container(border=True):
             {"d": convert_to_g(d2_raw, display_unit), "s": convert_to_g(std2_raw, display_unit), "snw": convert_to_g(snw2_raw, display_unit), "label": "粗量程 (Coarse)"}
         ]
     else:
-        d_raw = st.select_slider("分度值 d", options=d_conv, value=d_conv[4])
+        d_raw = st.select_slider("可讀數 d", options=d_conv, value=d_conv[4])
         std_raw = st.number_input("實測標準差 s", value=0.00008, format="%.6f")
         snw_raw = st.number_input("需求最小淨重 SNW", value=0.02, format="%.4f")
         test_ranges = [{"d": convert_to_g(d_raw, display_unit), "s": convert_to_g(std_raw, display_unit), "snw": convert_to_g(snw_raw, display_unit), "label": "單一/精細量程"}]
