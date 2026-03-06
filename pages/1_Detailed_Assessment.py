@@ -64,24 +64,24 @@ with st.expander(f"📥 測試參數輸入 ({display_unit})", expanded=True):
         d_converted_options = [float(smart_format(convert_from_g(x, display_unit))) for x in d_base_options]
 
         if balance_type == "DU_多量程 (Multiple range)":
-            d1_slider = st.select_slider(f"選擇常用分度值 d1 ({display_unit})", options=d_converted_options, value=d_converted_options[5])
-            d1_raw = st.number_input(f"實際分度值 d1 ({display_unit}) - 量程 1", value=d1_slider, step=p_step, format=p_format)
-            d2_slider = st.select_slider(f"選擇常用分度值 d2 ({display_unit})", options=d_converted_options, value=d_converted_options[4])
-            d2_raw = st.number_input(f"實際分度值 d2 ({display_unit}) - 量程 2", value=d2_slider, step=p_step, format=p_format)
+            d1_slider = st.select_slider(f"選擇天秤可讀數值 d1 ({display_unit})", options=d_converted_options, value=d_converted_options[5])
+            d1_raw = st.number_input(f"天秤可讀數 d1 ({display_unit}) - 量程 1", value=d1_slider, step=p_step, format=p_format)
+            d2_slider = st.select_slider(f"選擇天秤可讀數值 d2 ({display_unit})", options=d_converted_options, value=d_converted_options[4])
+            d2_raw = st.number_input(f"天秤可讀數 d2 ({display_unit}) - 量程 2", value=d2_slider, step=p_step, format=p_format)
             d1_g, d2_g = convert_to_g(d1_raw, display_unit), convert_to_g(d2_raw, display_unit)
         else:
-            d_slider = st.select_slider(f"選擇常用分度值 d ({display_unit})", options=d_converted_options, value=d_converted_options[4])
-            d_raw = st.number_input(f"實際分度值 d ({display_unit})", value=d_slider, step=p_step, format=p_format)
+            d_slider = st.select_slider(f"選擇天秤可讀數值 d ({display_unit})", options=d_converted_options, value=d_converted_options[4])
+            d_raw = st.number_input(f"天秤可讀數 d ({display_unit})", value=d_slider, step=p_step, format=p_format)
             d_g = convert_to_g(d_raw, display_unit)
 
     if not is_manufacturing:
         with tab_process:
             if balance_type == "DU_多量程 (Multiple range)":
-                snw1_raw = st.number_input(f"客戶預期最小淨重 ({display_unit}) - 量程 1", value=float(convert_from_g(0.02, display_unit)), step=p_step, format=p_format)
-                snw2_raw = st.number_input(f"客戶預期最小淨重 ({display_unit}) - 量程 2", value=float(convert_from_g(0.2, display_unit)), step=p_step, format=p_format)
+                snw1_raw = st.number_input(f"您預期最小淨重 ({display_unit}) - 量程 1", value=float(convert_from_g(0.02, display_unit)), step=p_step, format=p_format)
+                snw2_raw = st.number_input(f"您預期最小淨重 ({display_unit}) - 量程 2", value=float(convert_from_g(0.2, display_unit)), step=p_step, format=p_format)
                 snw1_g, snw2_g = convert_to_g(snw1_raw, display_unit), convert_to_g(snw2_raw, display_unit)
             else:
-                snw_raw = st.number_input(f"客戶預期最小淨重 ({display_unit})", value=float(convert_from_g(0.02, display_unit)), step=p_step, format=p_format)
+                snw_raw = st.number_input(f"您預期最小淨重 ({display_unit})", value=float(convert_from_g(0.02, display_unit)), step=p_step, format=p_format)
                 snw_g = convert_to_g(snw_raw, display_unit)
 
         with tab_std:
@@ -152,7 +152,7 @@ if not is_manufacturing and st.button("🚀 執行全面合規性診斷", use_co
             res_c1, res_c2, res_c3, res_c4 = st.columns(4)
             res_c1.metric("最小淨重量 (理想 0.41d)", auto_unit_format(2000 * s_threshold_g))
             res_c2.metric("最小秤重量 (實際 MinW)", auto_unit_format(actual_min_weight_g))
-            res_c3.metric("客戶預期最小淨重量", auto_unit_format(data['snw']))
+            res_c3.metric("您預期最小淨重量", auto_unit_format(data['snw']))
             res_c4.metric("安全係數 (SF)", f"{safety_factor:.2f}")
 
             if data['snw'] >= actual_min_weight_g:
@@ -165,6 +165,6 @@ st.subheader("📑 專業評估指標說明")
 st.info("""
 * **理想最小秤重量 (Minimum weight SNW)**: 基於機台可讀數 $d$ 的理論最優值，代表天平在無環境干擾下的極限。
 * **最小秤重量 (Minimum weight MinW)**: 依據現場重複性測試 (STD) 算得之真實值。若實測 STD 優於 $0.41d$，則法規強制以 $0.41d$ 計算。
-* **判定基準**: 當「客戶預期最小淨重」 $\ge$ 「最小秤重量」時，該量程判定為「符合秤量需求」。
+* **判定基準**: 當「預期最小淨重」 $\ge$ 「最小秤重量」時，該量程判定為「符合秤量需求」。
 * **安全係數 (Safety Factor)**: 反映用戶秤量目標相對於法規底線的裕度。USP 〈1251〉 建議安全係數應 $\ge 2$ 以確保製程穩定。
 """)
